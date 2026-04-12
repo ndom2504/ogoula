@@ -6,7 +6,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.Feed
+import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -128,7 +130,7 @@ fun PrivacySettingsScreen(
             item { Spacer(Modifier.height(8.dp)) }
             item {
                 PrivacySectionHeader(
-                    icon = Icons.Default.Feed,
+                    icon = Icons.AutoMirrored.Filled.Feed,
                     title = "Publications & interactions"
                 )
             }
@@ -161,7 +163,7 @@ fun PrivacySettingsScreen(
             item { Spacer(Modifier.height(8.dp)) }
             item {
                 PrivacySectionHeader(
-                    icon = Icons.Default.Message,
+                    icon = Icons.AutoMirrored.Filled.Message,
                     title = "Messagerie Kongossa"
                 )
             }

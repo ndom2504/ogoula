@@ -5,7 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Feed
+import androidx.compose.material.icons.automirrored.filled.Feed
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.School
@@ -86,7 +86,7 @@ fun CommunityCharterScreen(onBack: () -> Unit) {
             }
             item {
                 CharterCard(
-                    icon = Icons.Default.Feed,
+                    icon = Icons.AutoMirrored.Filled.Feed,
                     title = "Publications responsables",
                     body = "Pas de contenu violent ou pornographique, pas d'exploitation de mineur·e·s, " +
                         "pas de spam ni d'arnaques. Respecte les droits d'auteur. " +
