@@ -27,4 +27,6 @@ export type Post = {
   video_url: string | null;
   author_image_uri: string | null;
   is_community_post: boolean;
+  /** Présent si la table expose une colonne JSON/array de commentaires */
+  comments?: unknown[] | null;
 };

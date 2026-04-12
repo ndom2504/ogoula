@@ -6,7 +6,8 @@ import {
   Users, FileText, Shield, LogOut, Trash2,
   Search, RefreshCw, TrendingUp, AlertTriangle,
   ChevronRight, Eye, Image as ImageIcon, Video, CheckCircle,
-  XCircle, BarChart2, Bell
+  XCircle, BarChart2, Bell,
+  Lock as LockIcon, Ban, Settings,
 } from "lucide-react";
 import { OgoulaBrandMark } from "@/components/OgoulaBrandMark";
 
@@ -262,7 +263,7 @@ export default function AdminDashboard() {
                   { label: "Posts vidéo", value: totalVideos, color: "#003DA5" },
                   { label: "Posts communauté", value: communityPosts, color: "#7C3AED" },
                   { label: "Réactions totales", value: posts.reduce((a, p) => a + p.validates + p.loves, 0), color: "#EF4444" },
-                  { label: "Commentaires", value: posts.reduce((a, p) => a + (Array.isArray(p.comments) ? (p.comments as unknown[]).length : 0), 0), color: "#F59E0B" },
+                  { label: "Commentaires", value: posts.reduce((a, p) => a + (p.comments?.length ?? 0), 0), color: "#F59E0B" },
                 ].map((s, i) => (
                   <div key={i} className="text-center">
                     <p className="text-2xl font-black" style={{ color: s.color }}>{s.value}</p>
@@ -406,7 +407,7 @@ export default function AdminDashboard() {
                 ok
               />
               <SecurityCard
-                icon={<Lock size={20} />} color="#003DA5"
+                icon={<LockIcon size={20} />} color="#003DA5"
                 title="Row Level Security (RLS)"
                 desc="Les politiques Supabase garantissent que chaque utilisateur ne peut accéder qu'à ses propres données."
                 status="À configurer"
@@ -459,8 +460,9 @@ export default function AdminDashboard() {
                 <AlertTriangle size={48} className="text-gray-300 mx-auto mb-4" />
                 <h3 className="text-gray-700 font-bold text-lg mb-2">Système de signalement</h3>
                 <p className="text-gray-400 text-sm max-w-md mx-auto">
-                  Les signalements in-app seront affichés ici. Pour l'activer, ajoute une table{" "}
-                  <code className="bg-gray-100 px-1 rounded">reports</code> dans Supabase avec les colonnes :{" "}
+                  {"Les signalements in-app seront affichés ici. Pour l'activer, ajoute une table "}
+                  <code className="bg-gray-100 px-1 rounded">reports</code>
+                  {" dans Supabase avec les colonnes : "}
                   <code className="bg-gray-100 px-1 rounded">id, post_id, reporter_id, reason, created_at</code>.
                 </p>
                 <div className="mt-6 bg-gray-900 text-green-400 rounded-xl p-4 text-xs font-mono text-left max-w-md mx-auto">
