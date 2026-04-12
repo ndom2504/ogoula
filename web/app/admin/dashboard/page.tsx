@@ -9,7 +9,7 @@ import {
   ChevronRight, Eye, Image as ImageIcon, Video, CheckCircle,
   XCircle, BarChart2, Bell,
   Lock as LockIcon, Ban, Settings, PauseCircle, UserRoundCheck,
-  Building2, Send,
+  Building2, Send, Plus,
 } from "lucide-react";
 import { OgoulaBrandMark } from "@/components/OgoulaBrandMark";
 
@@ -26,7 +26,17 @@ export default function AdminDashboard() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
   const [communities, setCommunities] = useState<CommunityRow[]>([]);
+  const [communitiesLoadError, setCommunitiesLoadError] = useState<string | null>(null);
   const [adminProfile, setAdminProfile] = useState<Profile | null>(null);
+  const [newAdminFirst, setNewAdminFirst] = useState("");
+  const [newAdminLast, setNewAdminLast] = useState("");
+  const [newAdminAlias, setNewAdminAlias] = useState("");
+  const [profileCreateBusy, setProfileCreateBusy] = useState(false);
+  const [newCommName, setNewCommName] = useState("");
+  const [newCommDesc, setNewCommDesc] = useState("");
+  const [newCommCover, setNewCommCover] = useState("");
+  const [newCommMembers, setNewCommMembers] = useState("1");
+  const [commCreateBusy, setCommCreateBusy] = useState(false);
   const [publishContent, setPublishContent] = useState("");
   const [publishAsCommunity, setPublishAsCommunity] = useState(false);
   const [publishImageUrls, setPublishImageUrls] = useState("");
@@ -67,7 +77,13 @@ export default function AdminDashboard() {
     ]);
     setProfiles(profilesRes.data ?? []);
     setPosts(postsRes.data ?? []);
-    setCommunities(commRes.error ? [] : (commRes.data ?? []));
+    if (commRes.error) {
+      setCommunitiesLoadError(commRes.error.message);
+      setCommunities([]);
+    } else {
+      setCommunitiesLoadError(null);
+      setCommunities(commRes.data ?? []);
+    }
     setLoading(false);
   }, []);
 
@@ -79,8 +95,91 @@ export default function AdminDashboard() {
       if (!user?.id) return;
       const { data } = await supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle();
       setAdminProfile(data ?? null);
+      if (!data && user.email) {
+        const local = user.email.split("@")[0]?.replace(/[^a-zA-Z0-9._]/g, "") || "admin";
+        setNewAdminAlias((a) => (a ? a : `@${local}`));
+      }
     })();
   }, []);
+
+  async function createAdminProfile() {
+    setProfileCreateBusy(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.id) {
+        showMsg("Session requise.");
+        return;
+      }
+      const fn = newAdminFirst.trim();
+      const ln = newAdminLast.trim();
+      let alias = newAdminAlias.trim();
+      if (!fn || !ln) {
+        showMsg("Indique au moins le prénom et le nom.");
+        return;
+      }
+      if (!alias) {
+        showMsg("Indique un alias (ex. @admin_ogoula).");
+        return;
+      }
+      if (!alias.startsWith("@")) alias = `@${alias}`;
+      const row = {
+        user_id: user.id,
+        first_name: fn,
+        last_name: ln,
+        alias,
+        profile_image_url: null as string | null,
+        banner_image_url: null as string | null,
+        account_status: "active" as const,
+      };
+      const { data, error } = await supabase
+        .from("profiles")
+        .upsert(row, { onConflict: "user_id" })
+        .select("*")
+        .maybeSingle();
+      if (error) {
+        showMsg(`Création profil : ${error.message}`);
+        return;
+      }
+      if (data) setAdminProfile(data);
+      await loadData();
+      showMsg("Profil créé — tu peux publier ✓");
+    } finally {
+      setProfileCreateBusy(false);
+    }
+  }
+
+  async function createCommunityAdmin() {
+    setCommCreateBusy(true);
+    try {
+      const name = newCommName.trim();
+      if (!name) {
+        showMsg("Nom de la communauté requis.");
+        return;
+      }
+      const mc = Math.max(1, parseInt(newCommMembers, 10) || 1);
+      const row = {
+        id: globalThis.crypto.randomUUID(),
+        name,
+        description: newCommDesc.trim(),
+        cover_url: newCommCover.trim() || null,
+        member_count: mc,
+      };
+      const { data, error } = await supabase.from("communities").insert(row).select("*").maybeSingle();
+      if (error) {
+        showMsg(`Communauté : ${error.message}`);
+        return;
+      }
+      if (data) setCommunities((prev) => [data as CommunityRow, ...prev]);
+      setNewCommName("");
+      setNewCommDesc("");
+      setNewCommCover("");
+      setNewCommMembers("1");
+      setCommunitiesLoadError(null);
+      showMsg("Communauté ajoutée ✓");
+    } finally {
+      setCommCreateBusy(false);
+    }
+  }
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -435,10 +534,47 @@ export default function AdminDashboard() {
                 {" · "}{adminProfile.first_name} {adminProfile.last_name}
               </p>
             ) : (
-              <p className="text-sm text-red-600">
-                Aucun profil trouvé pour ce compte. Ajoute une ligne dans <code className="bg-gray-100 px-1 rounded">profiles</code> avec le même{" "}
-                <code className="bg-gray-100 px-1 rounded">user_id</code> que l’admin Supabase Auth.
-              </p>
+              <div className="rounded-xl border border-amber-200 bg-amber-50/90 p-4 space-y-3 text-sm text-amber-950">
+                <p>
+                  Aucune ligne dans <code className="rounded bg-white px-1">profiles</code> pour ton compte admin
+                  (le <code className="rounded bg-white px-1">user_id</code> Auth doit correspondre à{" "}
+                  <code className="rounded bg-white px-1">profiles.user_id</code>). Les communautés créées uniquement sur le téléphone
+                  restent en local tant que l’app ne les envoie pas à Supabase.
+                </p>
+                <p className="text-xs text-amber-900/90">
+                  Si le bouton ci-dessous échoue (RLS), exécute{" "}
+                  <code className="rounded bg-white px-1">docs/supabase_profiles_self_insert.sql</code> dans Supabase.
+                </p>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <input
+                    value={newAdminFirst}
+                    onChange={(e) => setNewAdminFirst(e.target.value)}
+                    placeholder="Prénom"
+                    className="rounded-lg border border-amber-200/80 bg-white px-3 py-2 text-sm"
+                  />
+                  <input
+                    value={newAdminLast}
+                    onChange={(e) => setNewAdminLast(e.target.value)}
+                    placeholder="Nom"
+                    className="rounded-lg border border-amber-200/80 bg-white px-3 py-2 text-sm"
+                  />
+                  <input
+                    value={newAdminAlias}
+                    onChange={(e) => setNewAdminAlias(e.target.value)}
+                    placeholder="@ton_alias"
+                    className="rounded-lg border border-amber-200/80 bg-white px-3 py-2 text-sm sm:col-span-3"
+                  />
+                </div>
+                <button
+                  type="button"
+                  disabled={profileCreateBusy}
+                  onClick={() => void createAdminProfile()}
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#009A44] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#007a36] disabled:opacity-50"
+                >
+                  <Plus size={18} />
+                  {profileCreateBusy ? "Création…" : "Créer mon profil admin"}
+                </button>
+              </div>
             )}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
               <label className="block text-xs font-semibold text-gray-500 uppercase">Message</label>
@@ -483,10 +619,62 @@ export default function AdminDashboard() {
         {/* ── COMMUNITIES TAB ─────────────────────────────────────── */}
         {tab === "communities" && (
           <div className="space-y-5">
-            <p className="text-gray-500 text-xs bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
-              Les communautés créées dans l’app Android sont synchronisées ici après exécution de{" "}
-              <code className="bg-white px-1 rounded">docs/supabase_communities.sql</code> dans Supabase.
+            {communitiesLoadError && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+                <p className="font-semibold">Impossible de charger les communautés</p>
+                <p className="mt-1 font-mono text-xs">{communitiesLoadError}</p>
+                <p className="mt-2 text-xs">
+                  Souvent : table absente → exécute{" "}
+                  <code className="rounded bg-white px-1">docs/supabase_communities.sql</code>, ou politique RLS à ajuster.
+                </p>
+              </div>
+            )}
+            <p className="text-gray-600 text-sm bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+              <strong>Pourquoi ta communauté du téléphone n’apparaît pas ?</strong> Tant que la table{" "}
+              <code className="rounded bg-white px-1">communities</code> n’existe pas côté Supabase, ou que l’app Android n’a pas la synchro
+              (version avec envoi vers Supabase), les groupes restent <strong>uniquement sur l’appareil</strong>. Tu peux les recréer ici
+              manuellement (même nom / description) pour les voir dans l’admin et dans le fil après synchro des clients.
             </p>
+            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm space-y-3">
+              <h3 className="font-bold text-gray-900 flex items-center gap-2 text-sm">
+                <Plus size={18} className="text-[#009A44]" /> Ajouter une communauté (Supabase)
+              </h3>
+              <input
+                value={newCommName}
+                onChange={(e) => setNewCommName(e.target.value)}
+                placeholder="Nom *"
+                className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
+              />
+              <textarea
+                value={newCommDesc}
+                onChange={(e) => setNewCommDesc(e.target.value)}
+                placeholder="Description"
+                rows={2}
+                className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
+              />
+              <input
+                value={newCommCover}
+                onChange={(e) => setNewCommCover(e.target.value)}
+                placeholder="URL image de couverture (optionnel)"
+                className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
+              />
+              <input
+                value={newCommMembers}
+                onChange={(e) => setNewCommMembers(e.target.value)}
+                placeholder="Nombre de membres (ex. 1)"
+                className="w-full max-w-xs rounded-xl border border-gray-200 px-3 py-2 text-sm"
+                type="number"
+                min={1}
+              />
+              <button
+                type="button"
+                disabled={commCreateBusy}
+                onClick={() => void createCommunityAdmin()}
+                className="inline-flex items-center gap-2 rounded-xl bg-[#009A44] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#007a36] disabled:opacity-50"
+              >
+                {commCreateBusy ? "Enregistrement…" : "Enregistrer en base"}
+              </button>
+            </div>
             <SearchBar value={search} onChange={setSearch} placeholder="Rechercher une communauté…" />
             <div className="space-y-3">
               {filteredCommunities.map((c) => (
@@ -523,7 +711,7 @@ export default function AdminDashboard() {
               {filteredCommunities.length === 0 && (
                 <div className="text-center py-12 text-gray-400 bg-white rounded-2xl border border-gray-100">
                   {communities.length === 0
-                    ? "Aucune communauté en base. Lance le script SQL puis crée une communauté depuis l’app."
+                    ? "Aucune communauté en base pour l’instant. Utilise le formulaire ci-dessus, ou exécute docs/supabase_communities.sql puis synchronise depuis l’app."
                     : "Aucun résultat pour cette recherche."}
                 </div>
               )}
