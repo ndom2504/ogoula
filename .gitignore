@@ -10,6 +10,9 @@
 .cxx
 local.properties
 
+# Firebase (télécharger depuis la console Firebase → ton app Android)
+app/google-services.json
+
 # Next.js (web/)
 web/node_modules/
 web/.next/

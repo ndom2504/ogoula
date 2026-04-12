@@ -1,8 +1,21 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
 }
+
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.reader(Charsets.UTF_8).use { localProperties.load(it) }
+}
+fun String.escapeForBuildConfig(): String =
+    replace("\\", "\\\\").replace("\"", "\\\"")
+
+val supabaseUrl = (localProperties.getProperty("supabase.url") ?: "").trim()
+val supabaseAnonKey = (localProperties.getProperty("supabase.anon.key") ?: "").trim()
 
 android {
     namespace = "com.ogoula.app"
@@ -16,6 +29,17 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField(
+            "String",
+            "SUPABASE_URL",
+            "\"${supabaseUrl.escapeForBuildConfig()}\"",
+        )
+        buildConfigField(
+            "String",
+            "SUPABASE_ANON_KEY",
+            "\"${supabaseAnonKey.escapeForBuildConfig()}\"",
+        )
     }
 
     buildTypes {
@@ -33,6 +57,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

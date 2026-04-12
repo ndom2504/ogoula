@@ -1,0 +1,8 @@
+## Copier ce fichier vers local.properties (déjà ignoré par Git) et adapter.
+## Ne jamais committer local.properties.
+
+sdk.dir=/chemin/vers/Android/sdk
+
+# Supabase : Dashboard → Project Settings → API
+supabase.url=https://votre-projet.supabase.co
+supabase.anon.key=votre_cle_anon_publique

@@ -52,7 +52,7 @@ import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.ui.PlayerView
-import com.example.ogoula.data.SUPABASE_ANON_KEY
+import com.ogoula.app.BuildConfig
 import okhttp3.OkHttpClient
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -608,8 +608,8 @@ fun VideoPlayerDialog(videoUrl: String, onDismiss: () -> Unit) {
         val okHttpClient = OkHttpClient.Builder()
             .addInterceptor { chain ->
                 val request = chain.request().newBuilder()
-                    .addHeader("apikey", SUPABASE_ANON_KEY)
-                    .addHeader("Authorization", "Bearer $SUPABASE_ANON_KEY")
+                    .addHeader("apikey", BuildConfig.SUPABASE_ANON_KEY)
+                    .addHeader("Authorization", "Bearer ${BuildConfig.SUPABASE_ANON_KEY}")
                     .build()
                 chain.proceed(request)
             }
