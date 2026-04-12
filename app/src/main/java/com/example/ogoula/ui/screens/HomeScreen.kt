@@ -4,7 +4,21 @@ import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -50,19 +64,23 @@ fun HomeScreen(
     val profile = userViewModel.userProfile
     val context = LocalContext.current
 
-    // Conteneur responsive centré : pleine largeur sur mobile, max 520 dp sur tablette/desktop
-    Box(
+    // Tablette : utiliser toute la largeur utile (ancien max 520 dp laissait des bandes vides énormes).
+    // Plafond ~900 dp pour garder des lignes de texte raisonnables sur très grands écrans.
+    val feedMaxCap = 900.dp
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .padding(innerPadding),
-        contentAlignment = Alignment.TopCenter
+        contentAlignment = Alignment.TopCenter,
     ) {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxHeight()
-            .widthIn(max = 520.dp)
-            .fillMaxWidth()
-    ) {
+        val feedMaxWidth = maxWidth.coerceAtMost(feedMaxCap)
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxHeight()
+                .widthIn(max = feedMaxWidth)
+                .fillMaxWidth(),
+        ) {
         item {
             StoryBar(stories, onAddStoryClick)
         }
@@ -103,8 +121,8 @@ fun HomeScreen(
                 onEdit = { newContent -> postViewModel.editPost(post.id, newContent) }
             )
         }
-    } // fin LazyColumn
-    } // fin Box responsive
+        } // fin LazyColumn
+    } // fin BoxWithConstraints
 }
 
 @Composable
