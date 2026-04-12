@@ -7,10 +7,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.Public
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Public
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -76,8 +76,8 @@ fun NotificationsScreen(viewModel: PostViewModel, onBack: () -> Unit) {
 @Composable
 fun NotificationListItem(notification: Notification) {
     val icon = when (notification.type) {
-        NotificationType.POST -> Icons.Default.Public
-        NotificationType.KONGOSSA -> Icons.Default.Chat
+        NotificationType.POST -> Icons.AutoMirrored.Filled.Public
+        NotificationType.KONGOSSA -> Icons.AutoMirrored.Filled.Chat
         NotificationType.COMMUNITY -> Icons.Default.Groups
         NotificationType.SYSTEM -> Icons.Default.Notifications
     }

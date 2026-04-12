@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -193,7 +194,7 @@ fun CommunitySettingsSheet(
                                 )
                                 DropdownMenuItem(
                                     text = { Text("Rendre muet") },
-                                    leadingIcon = { Icon(Icons.Default.VolumeOff, contentDescription = null) },
+                                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.VolumeOff, contentDescription = null) },
                                     onClick = { showMemberMenu = false }
                                 )
                                 DropdownMenuItem(

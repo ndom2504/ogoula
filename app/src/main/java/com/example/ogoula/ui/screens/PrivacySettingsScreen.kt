@@ -7,10 +7,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.BarChart
 import androidx.compose.material.icons.automirrored.filled.Feed
 import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.Book
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -89,7 +91,7 @@ fun PrivacySettingsScreen(
                                 )
                             }
                         }
-                        Icon(Icons.Default.ArrowForward, contentDescription = null, tint = GreenGabo)
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = GreenGabo)
                     }
                 }
             }
@@ -180,7 +182,7 @@ fun PrivacySettingsScreen(
             item { Spacer(Modifier.height(8.dp)) }
             item {
                 PrivacySectionHeader(
-                    icon = Icons.Default.BarChart,
+                    icon = Icons.AutoMirrored.Filled.BarChart,
                     title = "Données & personnalisation"
                 )
             }

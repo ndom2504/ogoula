@@ -3,6 +3,9 @@
 
 sdk.dir=/chemin/vers/Android/sdk
 
+# Si le build échoue sur jlink.exe (souvent dans Cursor) : dossier JBR / JDK complet (doit contenir bin/jlink)
+# Exemple Windows : org.gradle.java.home=C:\\Program Files\\Android\\Android Studio\\jbr
+
 # Supabase : Dashboard → Project Settings → API
 supabase.url=https://votre-projet.supabase.co
 supabase.anon.key=votre_cle_anon_publique
