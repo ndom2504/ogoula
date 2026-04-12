@@ -59,6 +59,51 @@ import coil.request.ImageRequest
 import coil.request.CachePolicy
 import com.example.ogoula.ui.theme.BlueGabo
 import com.example.ogoula.ui.theme.GreenGabo
+import kotlinx.coroutines.delay
+import java.time.Instant
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
+import java.util.Locale
+
+/** Secondes UNIX → ms si la valeur ressemble à un timestamp en secondes (PostgREST / JSON). */
+internal fun normalizePostTimeEpochMillis(raw: Long): Long {
+    if (raw <= 0L) return raw
+    return if (raw < 1_000_000_000_000L) raw * 1000L else raw
+}
+
+/** Libellé court en français (fil d’actualité). */
+internal fun formatRelativeTimeFr(rawWhenMs: Long, nowMs: Long = System.currentTimeMillis()): String {
+    val whenMs = normalizePostTimeEpochMillis(rawWhenMs)
+    if (whenMs <= 0L) return "récemment"
+    val diff = nowMs - whenMs
+    if (diff < -60_000) {
+        val postAt = ZonedDateTime.ofInstant(Instant.ofEpochMilli(whenMs), ZoneId.systemDefault())
+        return postAt.format(DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm", Locale.FRENCH))
+    }
+    if (diff < 60_000) return "à l'instant"
+    if (diff < 3_600_000) {
+        val m = (diff / 60_000).toInt()
+        return if (m == 1) "il y a 1 min" else "il y a $m min"
+    }
+    if (diff < 86_400_000) {
+        val h = (diff / 3_600_000).toInt()
+        return if (h == 1) "il y a 1 h" else "il y a $h h"
+    }
+    val zone = ZoneId.systemDefault()
+    val postAt = ZonedDateTime.ofInstant(Instant.ofEpochMilli(whenMs), zone)
+    val nowAt = ZonedDateTime.ofInstant(Instant.ofEpochMilli(nowMs), zone)
+    val dayFmt = DateTimeFormatter.ofPattern("HH:mm", Locale.FRENCH)
+    val daysBetween = ChronoUnit.DAYS.between(postAt.toLocalDate(), nowAt.toLocalDate())
+    return when {
+        daysBetween <= 0L -> "aujourd'hui à ${postAt.format(dayFmt)}"
+        daysBetween == 1L -> "hier à ${postAt.format(dayFmt)}"
+        daysBetween < 7 -> "il y a $daysBetween j"
+        daysBetween < 30 -> "il y a ${daysBetween / 7} sem."
+        else -> postAt.format(DateTimeFormatter.ofPattern("d MMM yyyy", Locale.FRENCH))
+    }
+}
 
 @Serializable
 data class Comment(
@@ -113,6 +158,15 @@ fun PostItem(
     var showEditDialog by remember { mutableStateOf(false) }
     var editedContent by remember { mutableStateOf(post.content) }
     val isOwnPost = currentUserHandle.isNotEmpty() && post.handle == currentUserHandle
+
+    var timeTick by remember(post.id) { mutableIntStateOf(0) }
+    LaunchedEffect(post.id, post.time) {
+        while (true) {
+            delay(30_000)
+            timeTick++
+        }
+    }
+    val timeLabel = remember(post.time, timeTick) { formatRelativeTimeFr(post.time) }
     
     Column(
         modifier = Modifier
@@ -188,7 +242,7 @@ fun PostItem(
                         modifier = Modifier.weight(1f, fill = false)
                     )
                     Text(
-                        text = " · Juste maintenant",
+                        text = " · $timeLabel",
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.Gray
                     )
@@ -371,7 +425,14 @@ fun CommentSheetContent(
     onAddComment: (String) -> Unit
 ) {
     var newCommentText by remember { mutableStateOf("") }
-    
+    var timeTick by remember { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(30_000)
+            timeTick++
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxHeight(0.8f)
@@ -409,9 +470,12 @@ fun CommentSheetContent(
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
+                        val cTime = remember(comment.time, comment.id, timeTick) {
+                            formatRelativeTimeFr(comment.time)
+                        }
                         Text(comment.author, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
                         Text(comment.text, style = MaterialTheme.typography.bodyMedium)
-                        Text("À l'instant", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                        Text(cTime, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                     }
                 }
             }
