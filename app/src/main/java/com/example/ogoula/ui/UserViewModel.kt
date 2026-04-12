@@ -57,7 +57,8 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
     var accountDenialMessage by mutableStateOf<String?>(null)
         private set
 
-    fun setAccountDenialMessage(msg: String) {
+    /** Ne pas nommer `setAccountDenialMessage` : conflit JVM avec le setter de la propriété. */
+    fun putAccountDenialMessage(msg: String) {
         accountDenialMessage = msg
     }
 

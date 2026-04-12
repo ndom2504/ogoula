@@ -86,7 +86,7 @@ class MainActivity : ComponentActivity() {
 
                     val modMsg = userViewModel.peekAccountModerationMessage()
                     if (modMsg != null) {
-                        userViewModel.setAccountDenialMessage(modMsg)
+                        userViewModel.putAccountDenialMessage(modMsg)
                         authViewModel.logout()
                         return@LaunchedEffect
                     }
