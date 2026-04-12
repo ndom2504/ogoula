@@ -1,0 +1,24 @@
+*.iml
+.gradle
+/local.properties
+# Android Studio (tout le dossier .idea — préférable au suivi partiel)
+.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Next.js (web/)
+web/node_modules/
+web/.next/
+web/out/
+web/.env
+web/.env.local
+web/.env*.local
+web/npm-debug.log*
+web/.vercel
+# Vidéo hero : version servie = web/public/presentation.mp4 uniquement
+web/app/presentation.mp4
+Thumbs.db
