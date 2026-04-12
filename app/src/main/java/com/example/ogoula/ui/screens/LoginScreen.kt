@@ -24,12 +24,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.ogoula.data.AuthRepository
 import com.example.ogoula.ui.AuthViewModel
+import com.example.ogoula.ui.UserViewModel
 import com.example.ogoula.ui.theme.BlueGabo
 import com.example.ogoula.ui.theme.GreenGabo
 import com.example.ogoula.ui.theme.YellowGabo
 
 @Composable
-fun LoginScreen(viewModel: AuthViewModel, onLoginSuccess: () -> Unit) {
+fun LoginScreen(
+    viewModel: AuthViewModel,
+    userViewModel: UserViewModel,
+    onLoginSuccess: () -> Unit,
+) {
     var isRegisterMode by remember { mutableStateOf(false) }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -86,6 +91,22 @@ fun LoginScreen(viewModel: AuthViewModel, onLoginSuccess: () -> Unit) {
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold
                 )
+
+                val denial = userViewModel.accountDenialMessage
+                if (denial != null) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0)),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            denial,
+                            color = Color(0xFFB45309),
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(12.dp),
+                            textAlign = TextAlign.Start
+                        )
+                    }
+                }
 
                 if (authState is AuthRepository.AuthState.Error) {
                     Card(
@@ -164,6 +185,7 @@ fun LoginScreen(viewModel: AuthViewModel, onLoginSuccess: () -> Unit) {
 
                 Button(
                     onClick = {
+                        userViewModel.clearAccountDenialMessage()
                         if (isRegister) viewModel.signUp(email, password)
                         else viewModel.signIn(email, password)
                     },

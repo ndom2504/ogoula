@@ -9,16 +9,7 @@ class UserRepository {
 
     suspend fun saveProfile(userId: String, profile: UserProfile) {
         try {
-            supabase.from("profiles").upsert(
-                UserProfile(
-                    userId = userId,
-                    firstName = profile.firstName,
-                    lastName = profile.lastName,
-                    alias = profile.alias,
-                    profileImageUri = profile.profileImageUri,
-                    bannerImageUri = profile.bannerImageUri
-                )
-            )
+            supabase.from("profiles").upsert(profile.copy(userId = userId))
         } catch (e: Exception) {
             e.printStackTrace()
         }

@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.*
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
@@ -77,15 +78,23 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                LaunchedEffect(isProfileLoaded) {
+                LaunchedEffect(isProfileLoaded, authState, hasProfile) {
                     if (!isProfileLoaded) return@LaunchedEffect
+                    if (authState !is AuthRepository.AuthState.Authenticated) return@LaunchedEffect
                     val currentRoute = navController.currentDestination?.route
-                    if (currentRoute == "login" || currentRoute == "splash") {
-                        if (hasProfile) {
-                            navController.navigate("main") { popUpTo(0) { inclusive = true } }
-                        } else {
-                            navController.navigate("profile_creation") { popUpTo(0) { inclusive = true } }
-                        }
+                    if (currentRoute != "login" && currentRoute != "splash") return@LaunchedEffect
+
+                    val modMsg = userViewModel.peekAccountModerationMessage()
+                    if (modMsg != null) {
+                        userViewModel.setAccountDenialMessage(modMsg)
+                        authViewModel.logout()
+                        return@LaunchedEffect
+                    }
+
+                    if (hasProfile) {
+                        navController.navigate("main") { popUpTo(0) { inclusive = true } }
+                    } else {
+                        navController.navigate("profile_creation") { popUpTo(0) { inclusive = true } }
                     }
                 }
 
@@ -105,6 +114,7 @@ class MainActivity : ComponentActivity() {
                     composable("login") {
                         LoginScreen(
                             viewModel = authViewModel,
+                            userViewModel = userViewModel,
                             onLoginSuccess = {}
                         )
                     }
@@ -154,6 +164,9 @@ class MainActivity : ComponentActivity() {
                             },
                             onPrivacySettingsClick = {
                                 navController.navigate("privacy_settings")
+                            },
+                            onCommunityCharterClick = {
+                                navController.navigate("community_charter")
                             },
                             onLogout = {
                                 authViewModel.logout()
@@ -258,8 +271,12 @@ class MainActivity : ComponentActivity() {
                     }
                     composable("privacy_settings") {
                         PrivacySettingsScreen(
-                            onBack = { navController.popBackStack() }
+                            onBack = { navController.popBackStack() },
+                            onNavigateToCharter = { navController.navigate("community_charter") },
                         )
+                    }
+                    composable("community_charter") {
+                        CommunityCharterScreen(onBack = { navController.popBackStack() })
                     }
                 }
             }
@@ -285,6 +302,7 @@ fun OgoulaApp(
     onNotificationsClick: () -> Unit,
     onEditProfileClick: () -> Unit,
     onPrivacySettingsClick: () -> Unit,
+    onCommunityCharterClick: () -> Unit,
     onLogout: () -> Unit
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -325,6 +343,15 @@ fun OgoulaApp(
                         onPrivacySettingsClick()
                     },
                     icon = { Icon(Icons.Default.Shield, contentDescription = null) }
+                )
+                NavigationDrawerItem(
+                    label = { Text("Charte Ogoula") },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onCommunityCharterClick()
+                    },
+                    icon = { Icon(Icons.Default.Book, contentDescription = null) }
                 )
                 NavigationDrawerItem(
                     label = { Text("Notifications") },

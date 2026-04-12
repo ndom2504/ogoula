@@ -1,10 +1,13 @@
 package com.example.ogoula.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -17,7 +20,10 @@ import com.example.ogoula.ui.theme.GreenGabo
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PrivacySettingsScreen(onBack: () -> Unit) {
+fun PrivacySettingsScreen(
+    onBack: () -> Unit,
+    onNavigateToCharter: () -> Unit = {},
+) {
 
     // États locaux des paramètres
     var profilPublic        by remember { mutableStateOf(true) }
@@ -47,6 +53,44 @@ fun PrivacySettingsScreen(onBack: () -> Unit) {
                 .padding(padding),
             contentPadding = PaddingValues(bottom = 32.dp)
         ) {
+
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .clickable(onClick = onNavigateToCharter),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.Book, contentDescription = null, tint = GreenGabo)
+                            Column {
+                                Text(
+                                    "Charte communautaire Ogoula",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    "Respect, intégrité, espace culturel et humain — règles de publication et modération.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        Icon(Icons.Default.ArrowForward, contentDescription = null, tint = GreenGabo)
+                    }
+                }
+            }
 
             // ── Section : Visibilité du profil ──────────────────────────────
             item {

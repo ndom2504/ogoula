@@ -13,6 +13,10 @@ import com.example.ogoula.data.UserRepository
 import kotlinx.coroutines.launch
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @Serializable
 data class UserProfile(
@@ -21,7 +25,10 @@ data class UserProfile(
     @SerialName("last_name") val lastName: String = "",
     val alias: String = "",
     @SerialName("profile_image_url") val profileImageUri: String? = null,
-    @SerialName("banner_image_url") val bannerImageUri: String? = null
+    @SerialName("banner_image_url") val bannerImageUri: String? = null,
+    @SerialName("account_status") val accountStatus: String? = "active",
+    @SerialName("suspended_until") val suspendedUntil: String? = null,
+    @SerialName("moderation_note") val moderationNote: String? = null,
 )
 
 class UserViewModel(application: Application) : AndroidViewModel(application) {
@@ -45,6 +52,53 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
     // true si l'utilisateur a déjà un profil (firstName non vide)
     var hasProfile by mutableStateOf(false)
         private set
+
+    /** Affiché sur l’écran de connexion après déconnexion forcée (sanction). */
+    var accountDenialMessage by mutableStateOf<String?>(null)
+        private set
+
+    fun setAccountDenialMessage(msg: String) {
+        accountDenialMessage = msg
+    }
+
+    fun clearAccountDenialMessage() {
+        accountDenialMessage = null
+    }
+
+    /** null si le compte peut utiliser l’app ; sinon message pour l’utilisateur. */
+    fun peekAccountModerationMessage(): String? {
+        val p = userProfile
+        val st = p.accountStatus?.lowercase(Locale.ROOT) ?: "active"
+        if (st == "banned") {
+            val n = p.moderationNote?.trim().orEmpty()
+            return if (n.isNotEmpty()) {
+                "Ce compte a été retiré de la communauté Ogoula pour non-respect de nos valeurs. Motif : $n"
+            } else {
+                "Ce compte n'est plus autorisé sur Ogoula (charte communautaire)."
+            }
+        }
+        if (st == "suspended") {
+            val until = p.suspendedUntil ?: return "Ton compte est temporairement suspendu. Réessaie plus tard ou contacte le support."
+            return try {
+                val end = Instant.parse(until)
+                if (end.isAfter(Instant.now())) {
+                    val human = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", Locale.FRENCH)
+                        .withZone(ZoneId.systemDefault())
+                        .format(end)
+                    val note = p.moderationNote?.trim().orEmpty()
+                    buildString {
+                        append("Compte suspendu jusqu'au $human.")
+                        if (note.isNotEmpty()) append(" Motif : $note")
+                    }
+                } else {
+                    null
+                }
+            } catch (_: Exception) {
+                "Compte suspendu. Contacte le support si besoin."
+            }
+        }
+        return null
+    }
 
     fun clearUploadError() { uploadError = null }
 
@@ -160,7 +214,10 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
                     lastName = lastName,
                     alias = alias,
                     profileImageUri = profileUrl,
-                    bannerImageUri = bannerUrl
+                    bannerImageUri = bannerUrl,
+                    accountStatus = userProfile.accountStatus,
+                    suspendedUntil = userProfile.suspendedUntil,
+                    moderationNote = userProfile.moderationNote,
                 )
                 userProfile = newProfile
                 // Sauvegarde locale des URLs d'images (survit aux redémarrages même si Supabase est lent)

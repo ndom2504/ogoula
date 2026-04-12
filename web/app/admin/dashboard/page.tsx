@@ -1,13 +1,14 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { supabase, Profile, Post } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
+import type { Profile, Post, AccountStatus } from "@/lib/supabase";
 import {
   Users, FileText, Shield, LogOut, Trash2,
   Search, RefreshCw, TrendingUp, AlertTriangle,
   ChevronRight, Eye, Image as ImageIcon, Video, CheckCircle,
   XCircle, BarChart2, Bell,
-  Lock as LockIcon, Ban, Settings,
+  Lock as LockIcon, Ban, Settings, PauseCircle, UserRoundCheck,
 } from "lucide-react";
 import { OgoulaBrandMark } from "@/components/OgoulaBrandMark";
 
@@ -26,6 +27,11 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [actionMsg, setActionMsg] = useState<string | null>(null);
+  const [modUi, setModUi] = useState<
+    null | { userId: string; alias: string; kind: "suspend" | "ban" }
+  >(null);
+  const [modNote, setModNote] = useState("");
+  const [suspendDays, setSuspendDays] = useState(7);
 
   // Stats
   const totalUsers = profiles.length;
@@ -82,6 +88,60 @@ export default function AdminDashboard() {
     await supabase.from("posts").delete().eq("handle", userHandle);
     setPosts((prev) => prev.filter((p) => p.handle !== userHandle));
     showMsg(`Posts de ${userHandle} supprimés ✓`);
+  }
+
+  async function applyProfileModeration(
+    userId: string,
+    patch: Record<string, unknown>,
+  ): Promise<boolean> {
+    const { error } = await supabase.from("profiles").update(patch).eq("user_id", userId);
+    if (error) {
+      showMsg(`Erreur : ${error.message}`);
+      return false;
+    }
+    await loadData();
+    showMsg("Compte mis à jour ✓");
+    return true;
+  }
+
+  async function liftSanction(userId: string) {
+    if (!confirm("Lever la suspension ou le bannissement pour ce compte ?")) return;
+    await applyProfileModeration(userId, {
+      account_status: "active",
+      suspended_until: null,
+      moderation_note: null,
+    });
+  }
+
+  async function submitModerationDialog() {
+    if (!modUi) return;
+    if (modUi.kind === "ban" && !modNote.trim()) {
+      showMsg("Indique un motif pour le bannissement.");
+      return;
+    }
+    if (modUi.kind === "suspend") {
+      const until = new Date();
+      until.setDate(until.getDate() + suspendDays);
+      const ok = await applyProfileModeration(modUi.userId, {
+        account_status: "suspended",
+        suspended_until: until.toISOString(),
+        moderation_note: modNote.trim() || null,
+      });
+      if (ok) {
+        setModUi(null);
+        setModNote("");
+      }
+    } else {
+      const ok = await applyProfileModeration(modUi.userId, {
+        account_status: "banned",
+        suspended_until: null,
+        moderation_note: modNote.trim(),
+      });
+      if (ok) {
+        setModUi(null);
+        setModNote("");
+      }
+    }
   }
 
   const filteredUsers = profiles.filter(
@@ -279,11 +339,17 @@ export default function AdminDashboard() {
         {tab === "users" && (
           <div className="space-y-5">
             <SearchBar value={search} onChange={setSearch} placeholder="Rechercher un utilisateur…" />
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <table className="w-full text-sm">
+            <p className="text-gray-500 text-xs bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
+              Modération : exécute d&apos;abord le script SQL{" "}
+              <code className="bg-white px-1 rounded">docs/supabase_profiles_moderation.sql</code> dans Supabase.
+              Les mises à jour nécessitent une politique RLS autorisant les admins à modifier{" "}
+              <code className="bg-white px-1 rounded">profiles</code> (ou une clé service côté serveur).
+            </p>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
+              <table className="w-full text-sm min-w-[720px]">
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr>
-                    {["Utilisateur", "Alias", "Publications", "Actions"].map((h) => (
+                    {["Utilisateur", "Alias", "Statut", "Publications", "Actions"].map((h) => (
                       <th key={h} className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
                     ))}
                   </tr>
@@ -291,6 +357,8 @@ export default function AdminDashboard() {
                 <tbody className="divide-y divide-gray-50">
                   {filteredUsers.map((p) => {
                     const userPostCount = posts.filter((po) => po.handle === p.alias).length;
+                    const st = (p.account_status ?? "active") as AccountStatus;
+                    const canLift = st === "suspended" || st === "banned";
                     return (
                       <tr key={p.user_id} className="hover:bg-gray-50 transition">
                         <td className="px-6 py-4">
@@ -306,16 +374,58 @@ export default function AdminDashboard() {
                             <div>
                               <p className="font-semibold text-gray-900">{p.first_name} {p.last_name}</p>
                               <p className="text-gray-400 text-xs truncate max-w-[120px]">{p.user_id}</p>
+                              {p.moderation_note && (
+                                <p className="text-amber-700 text-[11px] mt-0.5 max-w-[220px] truncate" title={p.moderation_note}>
+                                  Motif : {p.moderation_note}
+                                </p>
+                              )}
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-gray-600 font-mono text-xs">{p.alias}</td>
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-4 text-gray-600 font-mono text-xs align-top">{p.alias}</td>
+                        <td className="px-6 py-4 align-top">
+                          <ProfileStatusBadge profile={p} />
+                        </td>
+                        <td className="px-6 py-4 align-top">
                           <span className="bg-blue-50 text-blue-700 text-xs font-semibold px-2 py-1 rounded-full">{userPostCount}</span>
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
+                        <td className="px-6 py-4 align-top">
+                          <div className="flex flex-wrap items-center gap-1">
                             <button
+                              type="button"
+                              onClick={() => {
+                                setSuspendDays(7);
+                                setModNote("");
+                                setModUi({ userId: p.user_id, alias: p.alias, kind: "suspend" });
+                              }}
+                              title="Suspendre temporairement (violation des règles)"
+                              className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition"
+                            >
+                              <PauseCircle size={16} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setModNote("");
+                                setModUi({ userId: p.user_id, alias: p.alias, kind: "ban" });
+                              }}
+                              title="Bannir définitivement"
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                            >
+                              <Ban size={16} />
+                            </button>
+                            {canLift && (
+                              <button
+                                type="button"
+                                onClick={() => liftSanction(p.user_id)}
+                                title="Lever la sanction"
+                                className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
+                              >
+                                <UserRoundCheck size={16} />
+                              </button>
+                            )}
+                            <button
+                              type="button"
                               onClick={() => deleteUserPosts(p.alias)}
                               title="Supprimer tous les posts"
                               className="p-2 text-orange-500 hover:bg-orange-50 rounded-lg transition"
@@ -323,8 +433,9 @@ export default function AdminDashboard() {
                               <FileText size={15} />
                             </button>
                             <button
+                              type="button"
                               onClick={() => deleteUser(p.user_id)}
-                              title="Supprimer le profil"
+                              title="Supprimer le profil (données Ogoula)"
                               className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition"
                             >
                               <Trash2 size={15} />
@@ -335,7 +446,7 @@ export default function AdminDashboard() {
                     );
                   })}
                   {filteredUsers.length === 0 && (
-                    <tr><td colSpan={4} className="px-6 py-10 text-center text-gray-400">Aucun utilisateur trouvé.</td></tr>
+                    <tr><td colSpan={5} className="px-6 py-10 text-center text-gray-400">Aucun utilisateur trouvé.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -478,9 +589,84 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
+
+        {modUi && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
+            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
+              <h3 className="font-bold text-gray-900 text-lg">
+                {modUi.kind === "suspend" ? "Suspension temporaire" : "Bannissement"}
+                <span className="text-gray-500 font-normal text-sm block mt-1">{modUi.alias}</span>
+              </h3>
+              <p className="text-gray-600 text-sm">
+                {modUi.kind === "suspend"
+                  ? "Le compte ne pourra plus se connecter jusqu’à la date choisie. Explique brièvement le motif (respect de la communauté)."
+                  : "Exclusion définitive pour violation grave de la charte. Le motif sera visible côté utilisateur à la connexion."}
+              </p>
+              {modUi.kind === "suspend" && (
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Durée</label>
+                  <select
+                    value={suspendDays}
+                    onChange={(e) => setSuspendDays(Number(e.target.value))}
+                    className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm"
+                  >
+                    <option value={1}>1 jour</option>
+                    <option value={3}>3 jours</option>
+                    <option value={7}>7 jours</option>
+                    <option value={30}>30 jours</option>
+                    <option value={90}>90 jours</option>
+                  </select>
+                </div>
+              )}
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase">
+                  {modUi.kind === "ban" ? "Motif (obligatoire)" : "Motif (optionnel)"}
+                </label>
+                <textarea
+                  value={modNote}
+                  onChange={(e) => setModNote(e.target.value)}
+                  rows={3}
+                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm"
+                  placeholder="Ex. contenu haineux, harcèlement, spam répété…"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setModUi(null); setModNote(""); }}
+                  className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-100"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void submitModerationDialog()}
+                  className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-[#009A44] hover:bg-[#007a36]"
+                >
+                  Confirmer
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
+}
+
+function ProfileStatusBadge({ profile }: { profile: Profile }) {
+  const s = (profile.account_status ?? "active") as AccountStatus;
+  if (s === "banned") {
+    return <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-800">Banni</span>;
+  }
+  if (s === "suspended") {
+    const u = profile.suspended_until;
+    const extra = u
+      ? ` · jusqu’au ${new Date(u).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}`
+      : "";
+    return <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900">Suspendu{extra}</span>;
+  }
+  return <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800">Actif</span>;
 }
 
 function SearchBar({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
