@@ -21,7 +21,17 @@ export default function AdminLoginPage() {
     const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
 
     if (authError || !data.user) {
-      setError("Identifiants incorrects ou compte non autorisé.");
+      const raw = authError?.message ?? "";
+      const lower = raw.toLowerCase();
+      let msg =
+        "Email ou mot de passe refusé. Vérifie que l’utilisateur existe dans ton projet Supabase (Authentication → Users), avec le bon mot de passe — ce n’est pas le mot de passe de ton compte sur supabase.com.";
+      if (lower.includes("email not confirmed")) {
+        msg =
+          "Confirme ton adresse email (lien reçu par mail) ou désactive « Confirm email » dans Authentication → Providers → Email, puis réessaie.";
+      } else if (raw && !lower.includes("invalid login")) {
+        msg = raw;
+      }
+      setError(msg);
       setLoading(false);
       return;
     }
