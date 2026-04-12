@@ -6,6 +6,7 @@ import android.net.Uri
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.ogoula.data.CommunityRepository
 import com.example.ogoula.data.PostRepository
 import com.example.ogoula.data.StorageRepository
 import com.example.ogoula.ui.components.Comment
@@ -42,6 +43,7 @@ data class Community(
 
 class PostViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = PostRepository()
+    private val communityRepository = CommunityRepository()
     private val storageRepository = StorageRepository()
     private val communityPrefs = application.getSharedPreferences("ogoula_communities", Context.MODE_PRIVATE)
     private val followPrefs    = application.getSharedPreferences("ogoula_follows", Context.MODE_PRIVATE)
@@ -150,12 +152,25 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
             _communities.add(0, community)
             _communityNotifications.add(0, "Nouvelle communauté créée : $name")
             saveCommunities()
+            try {
+                communityRepository.upsert(community)
+                communityPrefs.edit().putBoolean("communities_cloud_synced", true).apply()
+            } catch (e: Exception) {
+                android.util.Log.e("PostViewModel", "Sync communauté Supabase", e)
+            }
         }
     }
 
     fun deleteCommunity(communityId: String) {
-        _communities.removeAll { it.id == communityId }
-        saveCommunities()
+        viewModelScope.launch {
+            try {
+                communityRepository.delete(communityId)
+            } catch (e: Exception) {
+                android.util.Log.e("PostViewModel", "Suppression communauté distante", e)
+            }
+            _communities.removeAll { it.id == communityId }
+            saveCommunities()
+        }
     }
 
     // ──────────────────────────────────────────────
@@ -172,9 +187,35 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
                         isLovedByMe = post.id in lovedPostIds
                     )
                 }
+                refreshCommunitiesFromRemote()
             } catch (e: Exception) {
                 e.printStackTrace()
             }
+        }
+    }
+
+    /** Synchronise la liste avec Supabase ; migre une fois les communautés locales si la table est vide. */
+    private suspend fun refreshCommunitiesFromRemote() {
+        try {
+            val remote = communityRepository.getAll()
+            if (remote.isNotEmpty()) {
+                _communities.clear()
+                _communities.addAll(remote)
+                saveCommunities()
+                return
+            }
+            if (_communities.isNotEmpty() && !communityPrefs.getBoolean("communities_cloud_synced", false)) {
+                _communities.forEach { communityRepository.upsert(it) }
+                communityPrefs.edit().putBoolean("communities_cloud_synced", true).apply()
+                val again = communityRepository.getAll()
+                if (again.isNotEmpty()) {
+                    _communities.clear()
+                    _communities.addAll(again)
+                    saveCommunities()
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
