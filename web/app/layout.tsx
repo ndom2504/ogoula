@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Ogoula",
     description: "L'Afrique du monde entier — une culture, une identité.",
-    url: "https://ogoula.com",
+    url: "https://www.ogoula.com",
     siteName: "Ogoula",
   },
 };

@@ -9,6 +9,7 @@ import { OgoulaBrandMark } from "@/components/OgoulaBrandMark";
 
 export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const playStoreUrl = process.env.NEXT_PUBLIC_PLAY_STORE_URL?.trim() ?? "";
 
   return (
     <div className="min-h-screen bg-white text-gray-900 overflow-x-hidden">
@@ -274,9 +275,30 @@ export default function LandingPage() {
           <h2 className="mb-4 text-4xl font-black text-[#065f46] md:text-5xl">
             Fais partie du mouvement
           </h2>
-          <p className="mb-10 text-lg text-[#166534]/85">
+          <p className="mb-6 text-lg text-[#166534]/85">
             L&apos;application Ogoula sera bientôt disponible sur le Play Store.
-            Laisse ton email pour être informé·e au lancement.
+            {playStoreUrl
+              ? " Tu peux l’installer tout de suite ou recevoir une alerte au lancement."
+              : " Laisse ton email pour être informé·e au lancement, ou suis le lien d’invitation si on t’a partagé ogoula.com/invite."}
+          </p>
+          {playStoreUrl && (
+            <div className="mb-8">
+              <a
+                href={playStoreUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#009A44] px-8 py-4 text-base font-bold text-white shadow-md transition hover:bg-[#007a36]"
+              >
+                <Smartphone size={22} />
+                Ouvrir sur Google Play
+              </a>
+            </div>
+          )}
+          <p className="mb-4 text-sm font-semibold text-[#065f46]">
+            Tu as reçu un lien d’invitation ?{" "}
+            <a href="/invite" className="text-[#009A44] underline underline-offset-2 hover:text-[#007a36]">
+              Page dédiée (sans email obligatoire)
+            </a>
           </p>
           <form
             onSubmit={(e) => { e.preventDefault(); alert("Merci ! Tu seras notifié au lancement."); }}
@@ -295,7 +317,7 @@ export default function LandingPage() {
               Me notifier
             </button>
           </form>
-          <p className="mt-4 text-xs text-[#15803d]/70">Aucun spam — une notification au lancement.</p>
+          <p className="mt-4 text-xs text-[#15803d]/70">Aucun spam — une notification au lancement. L’email reste optionnel si tu installes depuis le Play Store.</p>
         </div>
       </section>
 

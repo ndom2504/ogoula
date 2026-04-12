@@ -36,3 +36,13 @@ export type Post = {
   /** Présent si la table expose une colonne JSON/array de commentaires */
   comments?: unknown[] | null;
 };
+
+/** Table `communities` — voir docs/supabase_communities.sql */
+export type CommunityRow = {
+  id: string;
+  name: string;
+  description: string;
+  cover_url: string | null;
+  member_count: number;
+  created_at?: string;
+};

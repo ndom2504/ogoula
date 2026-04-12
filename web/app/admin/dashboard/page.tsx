@@ -2,17 +2,18 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import type { Profile, Post, AccountStatus } from "@/lib/supabase";
+import type { Profile, Post, AccountStatus, CommunityRow } from "@/lib/supabase";
 import {
   Users, FileText, Shield, LogOut, Trash2,
   Search, RefreshCw, TrendingUp, AlertTriangle,
   ChevronRight, Eye, Image as ImageIcon, Video, CheckCircle,
   XCircle, BarChart2, Bell,
   Lock as LockIcon, Ban, Settings, PauseCircle, UserRoundCheck,
+  Building2, Send,
 } from "lucide-react";
 import { OgoulaBrandMark } from "@/components/OgoulaBrandMark";
 
-type Tab = "overview" | "users" | "posts" | "security" | "reports";
+type Tab = "overview" | "publish" | "communities" | "users" | "posts" | "security" | "reports";
 
 type ReportedPost = Post & { reportCount: number; reportReason: string };
 
@@ -24,6 +25,12 @@ export default function AdminDashboard() {
   // Data
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [communities, setCommunities] = useState<CommunityRow[]>([]);
+  const [adminProfile, setAdminProfile] = useState<Profile | null>(null);
+  const [publishContent, setPublishContent] = useState("");
+  const [publishAsCommunity, setPublishAsCommunity] = useState(false);
+  const [publishImageUrls, setPublishImageUrls] = useState("");
+  const [publishBusy, setPublishBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [actionMsg, setActionMsg] = useState<string | null>(null);
@@ -53,16 +60,27 @@ export default function AdminDashboard() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const [{ data: p }, { data: po }] = await Promise.all([
+    const [profilesRes, postsRes, commRes] = await Promise.all([
       supabase.from("profiles").select("*").order("first_name"),
       supabase.from("posts").select("*").order("time", { ascending: false }),
+      supabase.from("communities").select("*").order("created_at", { ascending: false }),
     ]);
-    setProfiles(p ?? []);
-    setPosts(po ?? []);
+    setProfiles(profilesRes.data ?? []);
+    setPosts(postsRes.data ?? []);
+    setCommunities(commRes.error ? [] : (commRes.data ?? []));
     setLoading(false);
   }, []);
 
   useEffect(() => { checkAuth(); loadData(); }, [checkAuth, loadData]);
+
+  useEffect(() => {
+    void (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.id) return;
+      const { data } = await supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle();
+      setAdminProfile(data ?? null);
+    })();
+  }, []);
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -74,6 +92,69 @@ export default function AdminDashboard() {
     await supabase.from("posts").delete().eq("id", id);
     setPosts((prev) => prev.filter((p) => p.id !== id));
     showMsg("Post supprimé ✓");
+  }
+
+  async function deleteCommunityRow(id: string) {
+    if (!confirm("Supprimer cette communauté de la base ? Elle disparaîtra du fil admin et des applis au prochain rafraîchissement.")) return;
+    const { error } = await supabase.from("communities").delete().eq("id", id);
+    if (error) {
+      showMsg(`Erreur : ${error.message}`);
+      return;
+    }
+    setCommunities((prev) => prev.filter((c) => c.id !== id));
+    showMsg("Communauté supprimée ✓");
+  }
+
+  async function publishAdminPost() {
+    setPublishBusy(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.id) {
+        showMsg("Session requise.");
+        return;
+      }
+      let profile = adminProfile;
+      if (!profile) {
+        const { data } = await supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle();
+        profile = data ?? null;
+        setAdminProfile(profile);
+      }
+      if (!profile) {
+        showMsg("Crée un profil Ogoula pour ce compte admin (inscription app ou table profiles).");
+        return;
+      }
+      const content = publishContent.trim();
+      if (!content) {
+        showMsg("Écris un message pour le fil.");
+        return;
+      }
+      const image_urls = publishImageUrls.split(",").map((s) => s.trim()).filter(Boolean);
+      const row = {
+        id: globalThis.crypto.randomUUID(),
+        author: `${profile.first_name} ${profile.last_name}`.trim(),
+        handle: profile.alias,
+        content,
+        time: Date.now(),
+        validates: 0,
+        loves: 0,
+        image_urls,
+        video_url: null as string | null,
+        author_image_uri: profile.profile_image_url,
+        is_community_post: publishAsCommunity,
+      };
+      const { error } = await supabase.from("posts").insert(row);
+      if (error) {
+        showMsg(`Erreur publication : ${error.message}`);
+        return;
+      }
+      setPublishContent("");
+      setPublishImageUrls("");
+      setPublishAsCommunity(false);
+      await loadData();
+      showMsg("Publication envoyée dans le fil ✓");
+    } finally {
+      setPublishBusy(false);
+    }
   }
 
   async function deleteUser(userId: string) {
@@ -153,8 +234,14 @@ export default function AdminDashboard() {
       (p.content + p.author + p.handle).toLowerCase().includes(search.toLowerCase())
   );
 
+  const filteredCommunities = communities.filter((c) =>
+    `${c.name} ${c.description}`.toLowerCase().includes(search.toLowerCase())
+  );
+
   const NAV: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: "overview", label: "Vue d'ensemble", icon: <BarChart2 size={18} /> },
+    { id: "publish", label: "Publier", icon: <Send size={18} /> },
+    { id: "communities", label: "Communautés", icon: <Building2 size={18} /> },
     { id: "users", label: "Utilisateurs", icon: <Users size={18} /> },
     { id: "posts", label: "Publications", icon: <FileText size={18} /> },
     { id: "security", label: "Sécurité", icon: <Shield size={18} /> },
@@ -322,6 +409,7 @@ export default function AdminDashboard() {
                   { label: "Posts avec image", value: posts.filter((p) => p.image_urls && p.image_urls.length > 0 && !p.video_url).length, color: "#FCD116" },
                   { label: "Posts vidéo", value: totalVideos, color: "#003DA5" },
                   { label: "Posts communauté", value: communityPosts, color: "#7C3AED" },
+                  { label: "Communautés (Supabase)", value: communities.length, color: "#15803d" },
                   { label: "Réactions totales", value: posts.reduce((a, p) => a + p.validates + p.loves, 0), color: "#EF4444" },
                   { label: "Commentaires", value: posts.reduce((a, p) => a + (p.comments?.length ?? 0), 0), color: "#F59E0B" },
                 ].map((s, i) => (
@@ -332,6 +420,115 @@ export default function AdminDashboard() {
                 ))}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ── PUBLISH TAB ─────────────────────────────────────────── */}
+        {tab === "publish" && (
+          <div className="max-w-2xl space-y-5">
+            <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 text-sm text-amber-900">
+              Le post apparaît dans le fil avec ton <strong>profil admin</strong> (nom + alias). Coche « Post communauté » pour le style mis en avant comme dans l’app.
+            </div>
+            {adminProfile ? (
+              <p className="text-sm text-gray-600">
+                Connecté en tant que <span className="font-mono font-semibold">{adminProfile.alias}</span>
+                {" · "}{adminProfile.first_name} {adminProfile.last_name}
+              </p>
+            ) : (
+              <p className="text-sm text-red-600">
+                Aucun profil trouvé pour ce compte. Ajoute une ligne dans <code className="bg-gray-100 px-1 rounded">profiles</code> avec le même{" "}
+                <code className="bg-gray-100 px-1 rounded">user_id</code> que l’admin Supabase Auth.
+              </p>
+            )}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
+              <label className="block text-xs font-semibold text-gray-500 uppercase">Message</label>
+              <textarea
+                value={publishContent}
+                onChange={(e) => setPublishContent(e.target.value)}
+                rows={6}
+                placeholder="Annonce, actualité, message à la communauté…"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#009A44]"
+              />
+              <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={publishAsCommunity}
+                  onChange={(e) => setPublishAsCommunity(e.target.checked)}
+                  className="rounded border-gray-300 text-[#009A44] focus:ring-[#009A44]"
+                />
+                Publier comme post communauté (badge vert côté app)
+              </label>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Images (optionnel)</label>
+                <input
+                  value={publishImageUrls}
+                  onChange={(e) => setPublishImageUrls(e.target.value)}
+                  placeholder="URLs séparées par des virgules (https://…)"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#009A44]"
+                />
+              </div>
+              <button
+                type="button"
+                disabled={publishBusy}
+                onClick={() => void publishAdminPost()}
+                className="inline-flex items-center gap-2 rounded-xl bg-[#009A44] px-6 py-3 text-sm font-bold text-white hover:bg-[#007a36] disabled:opacity-50"
+              >
+                <Send size={18} />
+                {publishBusy ? "Publication…" : "Publier dans le fil"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── COMMUNITIES TAB ─────────────────────────────────────── */}
+        {tab === "communities" && (
+          <div className="space-y-5">
+            <p className="text-gray-500 text-xs bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+              Les communautés créées dans l’app Android sont synchronisées ici après exécution de{" "}
+              <code className="bg-white px-1 rounded">docs/supabase_communities.sql</code> dans Supabase.
+            </p>
+            <SearchBar value={search} onChange={setSearch} placeholder="Rechercher une communauté…" />
+            <div className="space-y-3">
+              {filteredCommunities.map((c) => (
+                <div
+                  key={c.id}
+                  className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex gap-4 flex-wrap md:flex-nowrap"
+                >
+                  <div className="w-14 h-14 rounded-xl bg-[#009A44]/10 shrink-0 overflow-hidden flex items-center justify-center text-[#009A44] font-bold">
+                    {c.cover_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={c.cover_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <Building2 size={24} />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-gray-900">{c.name}</p>
+                    <p className="text-sm text-gray-500 mt-1 line-clamp-2">{c.description}</p>
+                    <p className="text-xs text-gray-400 mt-2">
+                      {c.member_count} membre(s) · id <span className="font-mono">{c.id}</span>
+                      {c.created_at && ` · ${new Date(c.created_at).toLocaleString("fr-FR")}`}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void deleteCommunityRow(c.id)}
+                    className="self-start p-2 text-red-500 hover:bg-red-50 rounded-lg transition"
+                    title="Supprimer"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              ))}
+              {filteredCommunities.length === 0 && (
+                <div className="text-center py-12 text-gray-400 bg-white rounded-2xl border border-gray-100">
+                  {communities.length === 0
+                    ? "Aucune communauté en base. Lance le script SQL puis crée une communauté depuis l’app."
+                    : "Aucun résultat pour cette recherche."}
+                </div>
+              )}
+            </div>
+            <p className="text-gray-400 text-xs">{filteredCommunities.length} sur {communities.length} communauté(s)</p>
           </div>
         )}
 
