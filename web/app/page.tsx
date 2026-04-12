@@ -72,10 +72,7 @@ export default function LandingPage() {
             </div>
 
             <h1 className="text-3xl font-black leading-tight text-white sm:text-4xl md:text-5xl lg:text-6xl">
-              <span className="block">L&apos;Afrique du monde entier,</span>
-              <span className="mt-1 block text-xl font-extrabold tracking-tight text-white/95 sm:text-2xl md:text-3xl lg:text-4xl">
-                une culture, une identité
-              </span>
+              L&apos;Afrique et sa richesse culturelle dans le monde entier
             </h1>
 
             <p className="mx-auto mt-6 max-w-3xl text-center text-sm leading-relaxed text-white/90 sm:text-base md:text-lg">

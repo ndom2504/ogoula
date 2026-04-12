@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Ogoula — L'Afrique du monde entier, une culture, une identité",
+  title: "Ogoula — L'Afrique et sa richesse culturelle dans le monde entier",
   description:
-    "L'Afrique du monde entier : une culture, une identité. Réseau social au service des langues, des traditions et du lien entre continents.",
+    "L'Afrique et sa richesse culturelle dans le monde entier. Réseau social au service des langues, des traditions et du lien entre continents.",
   openGraph: {
-    title: "Ogoula",
-    description: "L'Afrique du monde entier — une culture, une identité.",
+    title: "Ogoula — L'Afrique et sa richesse culturelle dans le monde entier",
+    description:
+      "L'Afrique et sa richesse culturelle dans le monde entier — langues, traditions et lien entre continents.",
     url: "https://www.ogoula.com",
     siteName: "Ogoula",
   },
