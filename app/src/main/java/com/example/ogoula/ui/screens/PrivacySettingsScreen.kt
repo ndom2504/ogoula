@@ -7,9 +7,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.automirrored.filled.BarChart
 import androidx.compose.material.icons.automirrored.filled.Feed
 import androidx.compose.material.icons.automirrored.filled.Message
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
@@ -182,7 +182,7 @@ fun PrivacySettingsScreen(
             item { Spacer(Modifier.height(8.dp)) }
             item {
                 PrivacySectionHeader(
-                    icon = Icons.AutoMirrored.Filled.BarChart,
+                    icon = Icons.Default.BarChart,
                     title = "Données & personnalisation"
                 )
             }

@@ -14,9 +14,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.FlipCameraAndroid
-import androidx.compose.material.icons.automirrored.filled.Stop
 import androidx.compose.material.icons.filled.FiberManualRecord
+import androidx.compose.material.icons.filled.FlipCameraAndroid
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -127,7 +127,7 @@ fun LiveVideoScreen(onBack: () -> Unit) {
                         modifier = Modifier.size(72.dp)
                     ) {
                         Icon(
-                            imageVector = if (isRecording) Icons.AutoMirrored.Filled.Stop else Icons.Default.FiberManualRecord,
+                            imageVector = if (isRecording) Icons.Default.Stop else Icons.Default.FiberManualRecord,
                             contentDescription = if (isRecording) "Arrêter" else "Lancer le direct",
                             modifier = Modifier.size(36.dp)
                         )
