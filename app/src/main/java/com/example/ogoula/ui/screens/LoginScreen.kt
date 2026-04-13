@@ -26,6 +26,7 @@ import com.example.ogoula.data.AuthRepository
 import com.example.ogoula.ui.AuthViewModel
 import com.example.ogoula.ui.UserViewModel
 import com.example.ogoula.ui.theme.GreenGabo
+import com.example.ogoula.ui.theme.OgoulaWhite
 
 @Composable
 fun LoginScreen(
@@ -65,13 +66,13 @@ fun LoginScreen(
                 Text(
                     "Ogoula",
                     style = MaterialTheme.typography.displayMedium,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
+                    color = OgoulaWhite,
+                    fontWeight = FontWeight.Bold,
                 )
                 Text(
                     "Parlons des choses de notre bled",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = Color.White.copy(alpha = 0.9f)
+                    color = OgoulaWhite.copy(alpha = 0.9f),
                 )
             }
         }
