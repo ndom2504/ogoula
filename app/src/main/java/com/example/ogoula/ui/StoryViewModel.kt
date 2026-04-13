@@ -12,7 +12,7 @@ data class Story(
     val author: String,
     val contentText: String? = null,
     val contentImageUrl: String? = null,   // URL Supabase publique (persistante)
-    val color: Int = 0xFF009E60.toInt()
+    val color: Int = 0xFF1C745E.toInt()
 )
 
 class StoryViewModel(application: Application) : AndroidViewModel(application) {
@@ -70,7 +70,7 @@ class StoryViewModel(application: Application) : AndroidViewModel(application) {
                         author = obj.getString("author"),
                         contentText = if (obj.has("text")) obj.getString("text") else null,
                         contentImageUrl = if (obj.has("imageUrl")) obj.getString("imageUrl") else null,
-                        color = if (obj.has("color")) obj.getInt("color") else 0xFF009E60.toInt()
+                        color = if (obj.has("color")) obj.getInt("color") else 0xFF1C745E.toInt()
                     )
                 )
             }
