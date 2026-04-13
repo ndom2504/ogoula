@@ -45,9 +45,7 @@ import com.example.ogoula.ui.UserViewModel
 import com.example.ogoula.ui.StoryViewModel
 import com.example.ogoula.ui.AuthViewModel
 import com.example.ogoula.ui.screens.*
-import com.example.ogoula.ui.theme.GreenGabo
 import com.example.ogoula.ui.theme.OgoulaTheme
-import com.example.ogoula.ui.theme.OgoulaWhite
 import com.example.ogoula.data.AuthRepository
 import kotlinx.coroutines.launch
 
@@ -417,17 +415,11 @@ fun OgoulaApp(
             Scaffold(
                 topBar = {
                     TopAppBar(
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = GreenGabo,
-                            titleContentColor = OgoulaWhite,
-                            actionIconContentColor = OgoulaWhite,
-                            navigationIconContentColor = OgoulaWhite,
-                        ),
                         title = {
                             Text(
                                 text = "Ogoula",
                                 fontWeight = FontWeight.Bold,
-                                color = OgoulaWhite,
+                                color = MaterialTheme.colorScheme.primary,
                             )
                         },
                         actions = {
@@ -437,9 +429,9 @@ fun OgoulaApp(
                                     imageVector = Icons.Default.Groups,
                                     contentDescription = "Communauté",
                                     tint = if (currentDestination == AppDestinations.COMMUNITY) {
-                                        OgoulaWhite
+                                        MaterialTheme.colorScheme.primary
                                     } else {
-                                        OgoulaWhite.copy(alpha = 0.75f)
+                                        MaterialTheme.colorScheme.onSurface
                                     },
                                 )
                             }
@@ -452,7 +444,6 @@ fun OgoulaApp(
                                     Icon(
                                         imageVector = Icons.Default.Notifications,
                                         contentDescription = "Notifications",
-                                        tint = OgoulaWhite,
                                     )
                                 }
                             }

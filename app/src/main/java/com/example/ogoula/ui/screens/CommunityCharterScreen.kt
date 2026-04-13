@@ -17,7 +17,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.ogoula.ui.theme.GreenGabo
-import com.example.ogoula.ui.theme.OgoulaWhite
 
 /**
  * Charte communautaire Ogoula : valeurs culturelles, éducatives et humaines,
@@ -29,27 +28,15 @@ fun CommunityCharterScreen(onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Text(
-                        "Charte Ogoula",
-                        fontWeight = FontWeight.Bold,
-                        color = OgoulaWhite,
-                    )
-                },
+                title = { Text("Charte Ogoula", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Retour",
-                            tint = OgoulaWhite,
-                        )
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = GreenGabo,
-                    titleContentColor = OgoulaWhite,
-                    navigationIconContentColor = OgoulaWhite,
-                    actionIconContentColor = OgoulaWhite,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = GreenGabo,
                 ),
             )
         }
