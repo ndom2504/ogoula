@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ogoula.ui.theme.BlueGabo
 import com.example.ogoula.ui.theme.GreenGabo
 
 @Composable
@@ -125,7 +126,7 @@ fun SuggestedUsers() {
                         Icons.Default.CheckCircle,
                         contentDescription = "Vérifié",
                         modifier = Modifier.size(12.dp),
-                        tint = GreenGabo
+                        tint = BlueGabo
                     )
                 }
                 Button(

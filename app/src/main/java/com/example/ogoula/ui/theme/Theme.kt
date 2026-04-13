@@ -11,13 +11,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
+/** Surfaces légèrement différentes du fond pour le relief (mode clair « vert + blanc »). */
+private val LightGreenSurface = Color(0xFF1A5A4A)
+private val LightGreenSurfaceVariant = Color(0xFF236F5C)
+
 private val DarkColorScheme = darkColorScheme(
     primary = GreenGabo,
     onPrimary = OgoulaWhite,
     primaryContainer = BlueGabo,
     onPrimaryContainer = OgoulaWhite,
     secondary = YellowGabo,
-    onSecondary = OgoulaWhite,
+    onSecondary = Color(0xFF1A1A1A),
     tertiary = Color(0xFF6B9088),
     onTertiary = OgoulaWhite,
     background = Color(0xFF121E1B),
@@ -28,22 +32,31 @@ private val DarkColorScheme = darkColorScheme(
     onSurfaceVariant = Color(0xFFB8C9C3),
 )
 
+/**
+ * Mode clair : fonds verts, textes blancs (identité historique Ogoula).
+ * Boutons principaux : pastille blanche, texte vert (#1C745E).
+ */
 private val LightColorScheme = lightColorScheme(
-    primary = GreenGabo,
-    onPrimary = OgoulaWhite,
+    primary = OgoulaWhite,
+    onPrimary = GreenGabo,
     primaryContainer = OgoulaSurfaceTint,
-    onPrimaryContainer = BlueGabo,
-    secondary = YellowGabo,
-    onSecondary = OgoulaWhite,
-    tertiary = Color(0xFF6B8580),
-    onTertiary = OgoulaWhite,
-    background = OgoulaWhite,
-    onBackground = Color(0xFF1A2220),
-    surface = OgoulaWhite,
-    onSurface = Color(0xFF1A2220),
-    surfaceVariant = OgoulaSurfaceTint,
-    onSurfaceVariant = Color(0xFF3D524C),
-    outline = Color(0xFFC5D5CF),
+    onPrimaryContainer = GreenGabo,
+    secondary = Color(0xFFB5DFD0),
+    onSecondary = GreenGabo,
+    tertiary = Color(0xFF8FC9B8),
+    onTertiary = BlueGabo,
+    background = GreenGabo,
+    onBackground = OgoulaWhite,
+    surface = LightGreenSurface,
+    onSurface = OgoulaWhite,
+    surfaceVariant = LightGreenSurfaceVariant,
+    onSurfaceVariant = OgoulaWhite.copy(alpha = 0.88f),
+    outline = OgoulaWhite.copy(alpha = 0.38f),
+    outlineVariant = OgoulaWhite.copy(alpha = 0.22f),
+    error = Color(0xFFFFB4AB),
+    onError = Color(0xFF690005),
+    errorContainer = Color(0xFFFFDAD6),
+    onErrorContainer = Color(0xFF410002),
 )
 
 @Composable

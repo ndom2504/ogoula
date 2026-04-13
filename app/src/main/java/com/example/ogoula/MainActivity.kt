@@ -46,6 +46,7 @@ import com.example.ogoula.ui.StoryViewModel
 import com.example.ogoula.ui.AuthViewModel
 import com.example.ogoula.ui.screens.*
 import com.example.ogoula.ui.theme.OgoulaTheme
+import com.example.ogoula.ui.theme.OgoulaWhite
 import com.example.ogoula.data.AuthRepository
 import kotlinx.coroutines.launch
 
@@ -242,9 +243,10 @@ class MainActivity : ComponentActivity() {
                             onStoryCreated = { text, imageUrl ->
                                 val profile = userViewModel.userProfile
                                 storyViewModel.addStory(
+                                    userId = profile.userId,
                                     author = profile.firstName.ifEmpty { "Moi" },
                                     text = text,
-                                    imageUrl = imageUrl
+                                    imageUrl = imageUrl,
                                 )
                                 mainDestination = AppDestinations.HOME
                                 navController.popBackStack()
@@ -419,7 +421,7 @@ fun OgoulaApp(
                             Text(
                                 text = "Ogoula",
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary,
+                                color = OgoulaWhite,
                             )
                         },
                         actions = {
@@ -459,7 +461,7 @@ fun OgoulaApp(
                         storyViewModel = storyViewModel,
                         userViewModel = userViewModel,
                         onAwasClick = onCreatePostClick,
-                        onAddStoryClick = onAddStoryClick
+                        onAddStoryClick = onAddStoryClick,
                     )
                     AppDestinations.COMMUNITY -> CommunityScreen(
                         innerPadding = innerPadding,

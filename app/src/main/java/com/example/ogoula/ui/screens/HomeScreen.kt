@@ -28,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -51,20 +52,22 @@ import com.example.ogoula.ui.UserViewModel
 
 @Composable
 fun HomeScreen(
-    innerPadding: PaddingValues, 
+    innerPadding: PaddingValues,
     postViewModel: PostViewModel,
     storyViewModel: StoryViewModel,
     userViewModel: UserViewModel,
     onAwasClick: () -> Unit,
-    onAddStoryClick: () -> Unit
+    onAddStoryClick: () -> Unit,
 ) {
     val posts by postViewModel.posts.collectAsState()
     val stories = storyViewModel.stories
     val profile = userViewModel.userProfile
     val context = LocalContext.current
 
-    // Tablette : utiliser toute la largeur utile (ancien max 520 dp laissait des bandes vides énormes).
-    // Plafond ~900 dp pour garder des lignes de texte raisonnables sur très grands écrans.
+    LaunchedEffect(Unit) {
+        storyViewModel.refresh()
+    }
+
     val feedMaxCap = 900.dp
     BoxWithConstraints(
         modifier = Modifier
@@ -80,48 +83,47 @@ fun HomeScreen(
                 .widthIn(max = feedMaxWidth)
                 .fillMaxWidth(),
         ) {
-        item {
-            StoryBar(stories, onAddStoryClick)
-        }
-        item {
-            AwasInputBar(profileImageUri = profile.profileImageUri, onClick = onAwasClick)
-        }
-        items(posts) { post ->
-            // Si c'est un post de l'utilisateur connecté, afficher ses infos de profil actualisées
-            val displayPost = if (post.handle == profile.alias) {
-                val fullName = "${profile.firstName} ${profile.lastName}".trim()
-                post.copy(
-                    author = fullName.ifEmpty { post.author },
-                    authorImageUri = profile.profileImageUri ?: post.authorImageUri
-                )
-            } else post
+            item {
+                StoryBar(stories, onAddStoryClick)
+            }
+            item {
+                AwasInputBar(profileImageUri = profile.profileImageUri, onClick = onAwasClick)
+            }
+            items(posts) { post ->
+                val displayPost = if (post.handle == profile.alias) {
+                    val fullName = "${profile.firstName} ${profile.lastName}".trim()
+                    post.copy(
+                        author = fullName.ifEmpty { post.author },
+                        authorImageUri = profile.profileImageUri ?: post.authorImageUri
+                    )
+                } else post
 
-            PostItem(
-                post = displayPost,
-                isFollowed = postViewModel.followedUsers.contains(post.handle),
-                showFollowButton = post.handle != profile.alias,
-                currentUserHandle = profile.alias,
-                onValidate = { postViewModel.toggleValidate(post.id) },
-                onLove = { postViewModel.toggleLove(post.id) },
-                onCommentAdded = { text ->
-                    postViewModel.addComment(post.id, "${profile.firstName} ${profile.lastName}", text, profile.profileImageUri)
-                },
-                onToggleFollow = { postViewModel.toggleFollow(post.handle) },
-                onShare = {
-                    val sendIntent: Intent = Intent().apply {
-                        action = Intent.ACTION_SEND
-                        putExtra(Intent.EXTRA_TEXT, post.content)
-                        type = "text/plain"
-                    }
-                    val shareIntent = Intent.createChooser(sendIntent, null)
-                    context.startActivity(shareIntent)
-                },
-                onDelete = { postViewModel.deletePost(post.id) },
-                onEdit = { newContent -> postViewModel.editPost(post.id, newContent) }
-            )
+                PostItem(
+                    post = displayPost,
+                    isFollowed = postViewModel.followedUsers.contains(post.handle),
+                    showFollowButton = post.handle != profile.alias,
+                    currentUserHandle = profile.alias,
+                    onValidate = { postViewModel.toggleValidate(post.id) },
+                    onLove = { postViewModel.toggleLove(post.id) },
+                    onCommentAdded = { text ->
+                        postViewModel.addComment(post.id, "${profile.firstName} ${profile.lastName}", text, profile.profileImageUri)
+                    },
+                    onToggleFollow = { postViewModel.toggleFollow(post.handle) },
+                    onShare = {
+                        val sendIntent: Intent = Intent().apply {
+                            action = Intent.ACTION_SEND
+                            putExtra(Intent.EXTRA_TEXT, post.content)
+                            type = "text/plain"
+                        }
+                        val shareIntent = Intent.createChooser(sendIntent, null)
+                        context.startActivity(shareIntent)
+                    },
+                    onDelete = { postViewModel.deletePost(post.id) },
+                    onEdit = { newContent -> postViewModel.editPost(post.id, newContent) }
+                )
+            }
         }
-        } // fin LazyColumn
-    } // fin BoxWithConstraints
+    }
 }
 
 @Composable
@@ -131,7 +133,8 @@ fun StoryBar(stories: List<Story>, onAddStoryClick: () -> Unit) {
             text = "Au Quartier",
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
         )
         LazyRow(
             contentPadding = PaddingValues(horizontal = 16.dp),
@@ -140,7 +143,7 @@ fun StoryBar(stories: List<Story>, onAddStoryClick: () -> Unit) {
             item {
                 AddStoryCard(onClick = onAddStoryClick)
             }
-            items(stories) { story ->
+            items(stories, key = { it.id }) { story ->
                 StoryCard(story)
             }
         }
@@ -227,7 +230,7 @@ fun StoryCard(story: Story) {
                     )
                 }
             }
-            
+
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomStart)

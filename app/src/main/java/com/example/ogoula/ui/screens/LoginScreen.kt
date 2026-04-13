@@ -26,6 +26,7 @@ import com.example.ogoula.data.AuthRepository
 import com.example.ogoula.ui.AuthViewModel
 import com.example.ogoula.ui.UserViewModel
 import com.example.ogoula.ui.theme.GreenGabo
+import com.example.ogoula.ui.theme.OgoulaSurfaceTint
 import com.example.ogoula.ui.theme.OgoulaWhite
 
 @Composable
@@ -44,6 +45,22 @@ fun LoginScreen(
     LaunchedEffect(authState) {
         if (authState is AuthRepository.AuthState.Authenticated) onLoginSuccess()
     }
+
+    val loginFieldColors = OutlinedTextFieldDefaults.colors(
+        focusedTextColor = GreenGabo,
+        unfocusedTextColor = GreenGabo,
+        cursorColor = GreenGabo,
+        focusedBorderColor = OgoulaWhite,
+        unfocusedBorderColor = OgoulaWhite.copy(alpha = 0.55f),
+        focusedLabelColor = OgoulaWhite.copy(alpha = 0.92f),
+        unfocusedLabelColor = OgoulaWhite.copy(alpha = 0.72f),
+        focusedLeadingIconColor = GreenGabo,
+        unfocusedLeadingIconColor = GreenGabo,
+        focusedTrailingIconColor = GreenGabo,
+        unfocusedTrailingIconColor = GreenGabo,
+        focusedContainerColor = OgoulaWhite,
+        unfocusedContainerColor = OgoulaSurfaceTint,
+    )
 
     Column(
         modifier = Modifier
@@ -88,7 +105,8 @@ fun LoginScreen(
                 Text(
                     if (isRegister) "Créer un compte" else "Connexion",
                     style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground,
                 )
 
                 val denial = userViewModel.accountDenialMessage
@@ -131,7 +149,8 @@ fun LoginScreen(
                     leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                     shape = RoundedCornerShape(12.dp),
-                    singleLine = true
+                    singleLine = true,
+                    colors = loginFieldColors,
                 )
 
                 // Mot de passe
@@ -152,7 +171,8 @@ fun LoginScreen(
                     visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     shape = RoundedCornerShape(12.dp),
-                    singleLine = true
+                    singleLine = true,
+                    colors = loginFieldColors,
                 )
 
                 // Confirmation mot de passe (inscription seulement)
@@ -167,7 +187,8 @@ fun LoginScreen(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         shape = RoundedCornerShape(12.dp),
                         singleLine = true,
-                        isError = confirmPassword.isNotEmpty() && confirmPassword != password
+                        isError = confirmPassword.isNotEmpty() && confirmPassword != password,
+                        colors = loginFieldColors,
                     )
                     if (confirmPassword.isNotEmpty() && confirmPassword != password) {
                         Text(
@@ -191,10 +212,10 @@ fun LoginScreen(
                     enabled = !isLoading && isFormValid,
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = GreenGabo)
+                    colors = ButtonDefaults.buttonColors(),
                 ) {
                     if (isLoading) {
-                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                        CircularProgressIndicator(color = GreenGabo, modifier = Modifier.size(24.dp))
                     } else {
                         Text(if (isRegister) "Créer mon compte" else "Se connecter")
                     }
@@ -207,7 +228,7 @@ fun LoginScreen(
                     Text(
                         if (isRegister) "Déjà un compte ? Se connecter"
                         else "Pas encore de compte ? S'inscrire",
-                        color = GreenGabo
+                        color = OgoulaWhite.copy(alpha = 0.92f),
                     )
                 }
             }

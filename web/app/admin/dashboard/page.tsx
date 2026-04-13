@@ -2,18 +2,18 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import type { Profile, Post, AccountStatus, CommunityRow } from "@/lib/supabase";
+import type { Profile, Post, AccountStatus, CommunityRow, StoryRow } from "@/lib/supabase";
 import {
   Users, FileText, Shield, LogOut, Trash2,
   Search, RefreshCw, TrendingUp, AlertTriangle,
   ChevronRight, Eye, Image as ImageIcon, Video, CheckCircle,
   XCircle, BarChart2, Bell,
   Lock as LockIcon, Ban, Settings, PauseCircle, UserRoundCheck,
-  Building2, Send, Plus,
+  Building2, Send, Plus, Library,
 } from "lucide-react";
 import { OgoulaBrandMark } from "@/components/OgoulaBrandMark";
 
-type Tab = "overview" | "publish" | "communities" | "users" | "posts" | "security" | "reports";
+type Tab = "overview" | "publish" | "communities" | "users" | "posts" | "stories" | "security" | "reports";
 
 type ReportedPost = Post & { reportCount: number; reportReason: string };
 
@@ -27,6 +27,8 @@ export default function AdminDashboard() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [communities, setCommunities] = useState<CommunityRow[]>([]);
   const [communitiesLoadError, setCommunitiesLoadError] = useState<string | null>(null);
+  const [stories, setStories] = useState<StoryRow[]>([]);
+  const [storiesLoadError, setStoriesLoadError] = useState<string | null>(null);
   const [adminProfile, setAdminProfile] = useState<Profile | null>(null);
   const [newAdminFirst, setNewAdminFirst] = useState("");
   const [newAdminLast, setNewAdminLast] = useState("");
@@ -56,6 +58,7 @@ export default function AdminDashboard() {
   const totalVideos = posts.filter((p) => p.video_url).length;
   const totalImages = posts.reduce((acc, p) => acc + (p.image_urls?.length ?? 0), 0);
   const communityPosts = posts.filter((p) => p.is_community_post).length;
+  const totalStories = stories.length;
 
   const showMsg = (msg: string) => {
     setActionMsg(msg);
@@ -70,10 +73,11 @@ export default function AdminDashboard() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const [profilesRes, postsRes, commRes] = await Promise.all([
+    const [profilesRes, postsRes, commRes, storiesRes] = await Promise.all([
       supabase.from("profiles").select("*").order("first_name"),
       supabase.from("posts").select("*").order("time", { ascending: false }),
       supabase.from("communities").select("*").order("created_at", { ascending: false }),
+      supabase.from("stories").select("*").order("created_at", { ascending: false }),
     ]);
     setProfiles(profilesRes.data ?? []);
     setPosts(postsRes.data ?? []);
@@ -83,6 +87,13 @@ export default function AdminDashboard() {
     } else {
       setCommunitiesLoadError(null);
       setCommunities(commRes.data ?? []);
+    }
+    if (storiesRes.error) {
+      setStoriesLoadError(storiesRes.error.message);
+      setStories([]);
+    } else {
+      setStoriesLoadError(null);
+      setStories((storiesRes.data ?? []) as StoryRow[]);
     }
     setLoading(false);
   }, []);
@@ -184,6 +195,58 @@ export default function AdminDashboard() {
   async function handleLogout() {
     await supabase.auth.signOut();
     router.push("/admin");
+  }
+
+  async function suspendStoryRow(s: StoryRow) {
+    const note = window.prompt(
+      "Motif de suspension (optionnel) — règles / charte :",
+      s.moderation_note ?? "",
+    );
+    if (note === null) return;
+    const { error } = await supabase.from("stories").update({
+      status: "suspended",
+      moderation_note: note.trim() || null,
+    }).eq("id", s.id);
+    if (error) {
+      showMsg(`Erreur : ${error.message}`);
+      return;
+    }
+    setStories((prev) =>
+      prev.map((row) =>
+        row.id === s.id
+          ? { ...row, status: "suspended" as const, moderation_note: note.trim() || null }
+          : row,
+      ),
+    );
+    showMsg("Story suspendue — invisible dans l’app ✓");
+  }
+
+  async function reactivateStoryRow(id: string) {
+    const { error } = await supabase.from("stories").update({
+      status: "active",
+      moderation_note: null,
+    }).eq("id", id);
+    if (error) {
+      showMsg(`Erreur : ${error.message}`);
+      return;
+    }
+    setStories((prev) =>
+      prev.map((row) =>
+        row.id === id ? { ...row, status: "active" as const, moderation_note: null } : row,
+      ),
+    );
+    showMsg("Story réactivée ✓");
+  }
+
+  async function deleteStoryRow(id: string) {
+    if (!confirm("Supprimer définitivement cette story ? (fichier image éventuel reste dans le storage.)")) return;
+    const { error } = await supabase.from("stories").delete().eq("id", id);
+    if (error) {
+      showMsg(`Erreur : ${error.message}`);
+      return;
+    }
+    setStories((prev) => prev.filter((s) => s.id !== id));
+    showMsg("Story supprimée ✓");
   }
 
   async function deletePost(id: string) {
@@ -337,12 +400,19 @@ export default function AdminDashboard() {
     `${c.name} ${c.description}`.toLowerCase().includes(search.toLowerCase())
   );
 
+  const filteredStories = stories.filter((s) =>
+    `${s.author_display} ${s.content_text ?? ""} ${s.user_id} ${s.status}`
+      .toLowerCase()
+      .includes(search.toLowerCase()),
+  );
+
   const NAV: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: "overview", label: "Vue d'ensemble", icon: <BarChart2 size={18} /> },
     { id: "publish", label: "Publier", icon: <Send size={18} /> },
     { id: "communities", label: "Communautés", icon: <Building2 size={18} /> },
     { id: "users", label: "Utilisateurs", icon: <Users size={18} /> },
     { id: "posts", label: "Publications", icon: <FileText size={18} /> },
+    { id: "stories", label: "Stories", icon: <Library size={18} /> },
     { id: "security", label: "Sécurité", icon: <Shield size={18} /> },
     { id: "reports", label: "Signalements", icon: <AlertTriangle size={18} /> },
   ];
@@ -439,10 +509,11 @@ export default function AdminDashboard() {
         {tab === "overview" && (
           <div className="space-y-6">
             {/* Stats grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
               {[
                 { label: "Utilisateurs", value: totalUsers, icon: <Users size={20} />, color: "#009A44", bg: "#009A44" },
                 { label: "Publications", value: totalPosts, icon: <FileText size={20} />, color: "#003DA5", bg: "#003DA5" },
+                { label: "Stories", value: totalStories, icon: <Library size={20} />, color: "#a21caf", bg: "#a21caf" },
                 { label: "Vidéos", value: totalVideos, icon: <Video size={20} />, color: "#7C3AED", bg: "#7C3AED" },
                 { label: "Images", value: totalImages, icon: <ImageIcon size={20} />, color: "#D97706", bg: "#D97706" },
               ].map((stat, i) => (
@@ -509,6 +580,8 @@ export default function AdminDashboard() {
                   { label: "Posts vidéo", value: totalVideos, color: "#003DA5" },
                   { label: "Posts communauté", value: communityPosts, color: "#7C3AED" },
                   { label: "Communautés (Supabase)", value: communities.length, color: "#15803d" },
+                  { label: "Stories actives", value: stories.filter((st) => st.status === "active").length, color: "#a21caf" },
+                  { label: "Stories suspendues", value: stories.filter((st) => st.status === "suspended").length, color: "#c2410c" },
                   { label: "Réactions totales", value: posts.reduce((a, p) => a + p.validates + p.loves, 0), color: "#EF4444" },
                   { label: "Commentaires", value: posts.reduce((a, p) => a + (p.comments?.length ?? 0), 0), color: "#F59E0B" },
                 ].map((s, i) => (
@@ -888,6 +961,107 @@ export default function AdminDashboard() {
               )}
             </div>
             <p className="text-gray-400 text-xs">{filteredPosts.length} post(s) affiché(s) sur {totalPosts}</p>
+          </div>
+        )}
+
+        {/* ── STORIES TAB (Au Quartier) ───────────────────────────── */}
+        {tab === "stories" && (
+          <div className="space-y-5">
+            {storiesLoadError && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+                <p className="font-semibold">Stories non chargées</p>
+                <p className="mt-1 font-mono text-xs">{storiesLoadError}</p>
+                <p className="mt-2 text-xs">
+                  Exécute{" "}
+                  <code className="rounded bg-white px-1">docs/supabase_stories.sql</code> dans Supabase si la table n’existe pas encore.
+                </p>
+              </div>
+            )}
+            <p className="text-gray-600 text-sm bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3">
+              <strong>Suspendre</strong> : la story disparaît du carrousel « Au Quartier » dans l’app (filtrage{" "}
+              <code className="rounded bg-white px-1">status = active</code>).{" "}
+              <strong>Réactiver</strong> la rend visible à nouveau. <strong>Supprimer</strong> enlève la ligne en base (l’image reste dans le storage si tu ne la purges pas à la main).
+            </p>
+            <SearchBar value={search} onChange={setSearch} placeholder="Rechercher une story (auteur, texte, user id)…" />
+            <div className="space-y-3">
+              {filteredStories.map((s) => (
+                <div
+                  key={s.id}
+                  className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex gap-4 flex-wrap md:flex-nowrap"
+                >
+                  <div className="w-16 h-24 rounded-lg bg-gray-100 overflow-hidden shrink-0 border border-gray-200">
+                    {s.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={s.image_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-500 p-1 text-center leading-tight">
+                        {s.content_text?.slice(0, 80) || "—"}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <span className="font-semibold text-sm">{s.author_display}</span>
+                      {s.status === "suspended" ? (
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900">
+                          Suspendue
+                        </span>
+                      ) : (
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800">
+                          Active
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-400 font-mono truncate">user_id {s.user_id}</p>
+                    <p className="text-gray-700 text-sm line-clamp-2 mt-1">{s.content_text || "· image seule ·"}</p>
+                    {s.moderation_note && (
+                      <p className="text-amber-800 text-xs mt-1">Motif : {s.moderation_note}</p>
+                    )}
+                    <p className="text-xs text-gray-400 mt-2">
+                      id <span className="font-mono">{s.id}</span>
+                      {s.created_at && ` · ${new Date(s.created_at).toLocaleString("fr-FR")}`}
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2 shrink-0">
+                    {s.status === "active" ? (
+                      <button
+                        type="button"
+                        title="Suspendre (charte / règles)"
+                        onClick={() => void suspendStoryRow(s)}
+                        className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition"
+                      >
+                        <PauseCircle size={16} />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        title="Réactiver"
+                        onClick={() => void reactivateStoryRow(s.id)}
+                        className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
+                      >
+                        <UserRoundCheck size={16} />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      title="Supprimer définitivement"
+                      onClick={() => void deleteStoryRow(s.id)}
+                      className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {filteredStories.length === 0 && !storiesLoadError && (
+                <div className="text-center py-12 text-gray-400 bg-white rounded-2xl border border-gray-100">
+                  {stories.length === 0 ? "Aucune story en base." : "Aucun résultat pour cette recherche."}
+                </div>
+              )}
+            </div>
+            <p className="text-gray-400 text-xs">
+              {filteredStories.length} affichée(s) sur {totalStories}
+            </p>
           </div>
         )}
 

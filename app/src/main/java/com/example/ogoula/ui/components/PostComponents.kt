@@ -171,7 +171,7 @@ fun PostItem(
         modifier = Modifier
             .fillMaxWidth()
             .background(
-                if (post.isCommunityPost) GreenGabo.copy(alpha = 0.04f)
+                if (post.isCommunityPost) GreenGabo.copy(alpha = 0.14f)
                 else MaterialTheme.colorScheme.surface
             )
     ) {
@@ -235,7 +235,7 @@ fun PostItem(
                     Text(
                         text = post.handle,
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
@@ -243,7 +243,7 @@ fun PostItem(
                     Text(
                         text = " · $timeLabel",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -254,7 +254,11 @@ fun PostItem(
                     Icon(
                         imageVector = if (isFollowed) Icons.Default.PersonRemove else Icons.Default.PersonAdd,
                         contentDescription = "Suivre",
-                        tint = if (isFollowed) Color.Gray else GreenGabo,
+                        tint = if (isFollowed) {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        } else {
+                            MaterialTheme.colorScheme.onSurface
+                        },
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -362,7 +366,11 @@ fun PostItem(
                 onClick = { showCommentSheet = true }
             )
             IconButton(onClick = onShare) {
-                Icon(Icons.Default.Share, contentDescription = "Partager", tint = GreenGabo)
+                Icon(
+                    Icons.Default.Share,
+                    contentDescription = "Partager",
+                    tint = MaterialTheme.colorScheme.onSurface,
+                )
             }
         }
 
@@ -448,7 +456,10 @@ fun CommentSheetContent(
             if (comments.isEmpty()) {
                 item {
                     Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                        Text("Soyez le premier à commenter !", color = Color.Gray)
+                        Text(
+                            "Soyez le premier à commenter !",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
             }
@@ -474,7 +485,11 @@ fun CommentSheetContent(
                         }
                         Text(comment.author, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
                         Text(comment.text, style = MaterialTheme.typography.bodyMedium)
-                        Text(cTime, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                        Text(
+                            cTime,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
             }

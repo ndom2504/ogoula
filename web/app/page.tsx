@@ -328,10 +328,16 @@ export default function LandingPage() {
                 <p className="mt-1 text-sm text-white/75">Réseau social — cultures africaines & monde</p>
               </div>
             </div>
-            <div className="flex gap-6 text-sm">
-              <a href="#" className="transition-colors hover:text-white">Confidentialité</a>
-              <a href="#" className="transition-colors hover:text-white">CGU</a>
-              <a href="mailto:info@misterdil.ca" className="transition-colors hover:text-white">Contact</a>
+            <div className="flex flex-wrap justify-center gap-4 text-sm md:gap-6">
+              <a href="/privacy" className="transition-colors hover:text-white">
+                Politique de confidentialité
+              </a>
+              <a href="/delete-account" className="transition-colors hover:text-white">
+                Suppression des données
+              </a>
+              <a href="mailto:contact@ogoula.com" className="transition-colors hover:text-white">
+                Contact
+              </a>
             </div>
           </div>
           <div className="mt-8 border-t border-white/15 pt-8 text-center text-xs text-white/60">

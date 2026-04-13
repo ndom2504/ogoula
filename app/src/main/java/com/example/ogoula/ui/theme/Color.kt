@@ -5,13 +5,11 @@ import androidx.compose.ui.graphics.Color
 /** Vert principal Ogoula (#1C745E) — base de l’identité mobile. */
 val GreenGabo = Color(0xFF1C745E)
 
-/**
- * Tons complémentaires (noms historiques conservés pour le code) : verts adoucis,
- * plus de jaune / bleu drapeau pour réduire la présence multicolore.
- */
-val YellowGabo = Color(0xFF3D8F75)
+/** Jaune drapeau / accent (cartes, boutons secondaires). */
+val YellowGabo = Color(0xFFF5D547)
 
-val BlueGabo = Color(0xFF0F3D33)
+/** Bleu drapeau / accent (icônes vérifiées, carte « Scène », liens). */
+val BlueGabo = Color(0xFF2E7CBD)
 
 /** Blanc pur (surfaces, texte sur vert). */
 val OgoulaWhite = Color.White

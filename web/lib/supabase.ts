@@ -37,6 +37,21 @@ export type Post = {
   comments?: unknown[] | null;
 };
 
+/** Table `stories` — voir docs/supabase_stories.sql */
+export type StoryStatus = "active" | "suspended";
+
+export type StoryRow = {
+  id: string;
+  user_id: string;
+  author_display: string;
+  content_text: string | null;
+  image_url: string | null;
+  color: number;
+  status: StoryStatus;
+  moderation_note: string | null;
+  created_at?: string;
+};
+
 /** Table `communities` — voir docs/supabase_communities.sql */
 export type CommunityRow = {
   id: string;

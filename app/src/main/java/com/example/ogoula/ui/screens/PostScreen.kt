@@ -17,7 +17,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.ogoula.ui.theme.GreenGabo
+import com.example.ogoula.ui.theme.BlueGabo
+import com.example.ogoula.ui.theme.YellowGabo
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,24 +44,25 @@ fun PostScreen(
             text = "Partagez avec le Bled",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 32.dp)
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(bottom = 32.dp),
         )
-        
+
         PostOption(
             title = "Post Classique",
             subtitle = "Textes, images ou memes",
             icon = Icons.Default.Add,
-            color = GreenGabo,
-            onClick = onCreatePostClick
+            color = MaterialTheme.colorScheme.surface,
+            onClick = onCreatePostClick,
         )
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         PostOption(
             title = "Créer ma Communauté",
             subtitle = "Lancez votre groupe d'intérêt",
             icon = Icons.Default.Group,
-            color = GreenGabo.copy(alpha = 0.92f),
+            color = MaterialTheme.colorScheme.surfaceVariant,
             onClick = onCreateCommunityClick,
         )
 
@@ -70,7 +72,7 @@ fun PostScreen(
             title = "Créer une Scène",
             subtitle = "Direct ou Studio Montage",
             icon = Icons.Default.VideoCall,
-            color = GreenGabo.copy(alpha = 0.78f),
+            color = BlueGabo,
             onClick = { showSceneSheet = true },
         )
     }
@@ -106,7 +108,13 @@ fun PostScreen(
                 ListItem(
                     headlineContent = { Text("Studio Montage") },
                     supportingContent = { Text("Éditer une vidéo avec des filtres fun") },
-                    leadingContent = { Icon(Icons.Default.Movie, contentDescription = null, tint = GreenGabo) },
+                    leadingContent = {
+                        Icon(
+                            Icons.Default.Movie,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurface,
+                        )
+                    },
                     modifier = Modifier.clickable {
                         showSceneSheet = false
                         onStudioClick()
