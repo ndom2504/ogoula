@@ -25,9 +25,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
 import com.example.ogoula.ui.UserViewModel
-import com.example.ogoula.ui.theme.BlueGabo
 import com.example.ogoula.ui.theme.GreenGabo
-import com.example.ogoula.ui.theme.YellowGabo
+import com.example.ogoula.ui.theme.OgoulaSurfaceTint
 
 @Composable
 fun ProfileCreationScreen(
@@ -96,7 +95,11 @@ fun ProfileCreationScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(200.dp)
-                .background(brush = Brush.horizontalGradient(listOf(GreenGabo, YellowGabo, BlueGabo)))
+                .background(
+                    brush = Brush.horizontalGradient(
+                        listOf(GreenGabo, GreenGabo.copy(alpha = 0.82f), OgoulaSurfaceTint),
+                    ),
+                )
                 .clickable {
                     bannerPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                 },

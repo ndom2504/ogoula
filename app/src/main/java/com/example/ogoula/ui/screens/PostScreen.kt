@@ -17,9 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.ogoula.ui.theme.BlueGabo
 import com.example.ogoula.ui.theme.GreenGabo
-import com.example.ogoula.ui.theme.YellowGabo
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,19 +60,18 @@ fun PostScreen(
             title = "Créer ma Communauté",
             subtitle = "Lancez votre groupe d'intérêt",
             icon = Icons.Default.Group,
-            color = YellowGabo,
-            textColor = Color.Black,
-            onClick = onCreateCommunityClick
+            color = GreenGabo.copy(alpha = 0.92f),
+            onClick = onCreateCommunityClick,
         )
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         PostOption(
             title = "Créer une Scène",
             subtitle = "Direct ou Studio Montage",
             icon = Icons.Default.VideoCall,
-            color = BlueGabo,
-            onClick = { showSceneSheet = true }
+            color = GreenGabo.copy(alpha = 0.78f),
+            onClick = { showSceneSheet = true },
         )
     }
 
@@ -109,7 +106,7 @@ fun PostScreen(
                 ListItem(
                     headlineContent = { Text("Studio Montage") },
                     supportingContent = { Text("Éditer une vidéo avec des filtres fun") },
-                    leadingContent = { Icon(Icons.Default.Movie, contentDescription = null, tint = BlueGabo) },
+                    leadingContent = { Icon(Icons.Default.Movie, contentDescription = null, tint = GreenGabo) },
                     modifier = Modifier.clickable {
                         showSceneSheet = false
                         onStudioClick()

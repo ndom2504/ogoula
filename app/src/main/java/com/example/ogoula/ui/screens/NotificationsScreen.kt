@@ -23,9 +23,7 @@ import androidx.compose.ui.unit.dp
 import com.example.ogoula.ui.Notification
 import com.example.ogoula.ui.NotificationType
 import com.example.ogoula.ui.PostViewModel
-import com.example.ogoula.ui.theme.BlueGabo
 import com.example.ogoula.ui.theme.GreenGabo
-import com.example.ogoula.ui.theme.YellowGabo
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,9 +81,9 @@ fun NotificationListItem(notification: Notification) {
     }
     
     val iconColor = when (notification.type) {
-        NotificationType.POST -> BlueGabo
+        NotificationType.POST -> GreenGabo.copy(alpha = 0.85f)
         NotificationType.KONGOSSA -> GreenGabo
-        NotificationType.COMMUNITY -> YellowGabo
+        NotificationType.COMMUNITY -> GreenGabo.copy(alpha = 0.65f)
         NotificationType.SYSTEM -> Color.Gray
     }
 

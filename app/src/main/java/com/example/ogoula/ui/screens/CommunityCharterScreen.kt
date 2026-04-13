@@ -16,7 +16,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.ogoula.ui.theme.BlueGabo
 import com.example.ogoula.ui.theme.GreenGabo
 
 /**
@@ -105,7 +104,7 @@ fun CommunityCharterScreen(onBack: () -> Unit) {
             }
             item {
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = BlueGabo.copy(alpha = 0.08f)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Text(

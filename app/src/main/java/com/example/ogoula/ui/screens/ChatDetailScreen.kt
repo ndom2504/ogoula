@@ -20,7 +20,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ogoula.ui.theme.BlueGabo
 import com.example.ogoula.ui.theme.GreenGabo
 
 data class Message(
@@ -153,7 +152,7 @@ fun ChatInputBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = { /* Partage */ }) {
-                Icon(Icons.Default.Add, contentDescription = "Ajouter", tint = BlueGabo)
+                Icon(Icons.Default.Add, contentDescription = "Ajouter", tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             
             TextField(

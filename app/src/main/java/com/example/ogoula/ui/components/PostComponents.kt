@@ -57,7 +57,6 @@ import okhttp3.OkHttpClient
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.request.CachePolicy
-import com.example.ogoula.ui.theme.BlueGabo
 import com.example.ogoula.ui.theme.GreenGabo
 import kotlinx.coroutines.delay
 import java.time.Instant
@@ -198,7 +197,7 @@ fun PostItem(
                 modifier = Modifier
                     .size(44.dp)
                     .clip(CircleShape)
-                    .background(BlueGabo),
+                    .background(GreenGabo.copy(alpha = 0.9f)),
                 contentAlignment = Alignment.Center
             ) {
                 if (post.authorImageUri != null) {
@@ -363,7 +362,7 @@ fun PostItem(
                 onClick = { showCommentSheet = true }
             )
             IconButton(onClick = onShare) {
-                Icon(Icons.Default.Share, contentDescription = "Partager", tint = BlueGabo)
+                Icon(Icons.Default.Share, contentDescription = "Partager", tint = GreenGabo)
             }
         }
 

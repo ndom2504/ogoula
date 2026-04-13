@@ -42,8 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.ogoula.ui.theme.GreenGabo
-import com.example.ogoula.ui.theme.YellowGabo
-import com.example.ogoula.ui.theme.BlueGabo
+import com.example.ogoula.ui.theme.OgoulaSurfaceTint
 import com.example.ogoula.ui.components.PostItem
 import com.example.ogoula.ui.PostViewModel
 import com.example.ogoula.ui.StoryViewModel
@@ -196,7 +195,9 @@ fun StoryCard(story: Story) {
             .size(width = 100.dp, height = 160.dp)
             .border(
                 width = 2.dp,
-                brush = Brush.verticalGradient(listOf(GreenGabo, YellowGabo, BlueGabo)),
+                brush = Brush.verticalGradient(
+                    listOf(GreenGabo, GreenGabo.copy(alpha = 0.75f), OgoulaSurfaceTint),
+                ),
                 shape = RoundedCornerShape(12.dp)
             ),
         shape = RoundedCornerShape(12.dp)

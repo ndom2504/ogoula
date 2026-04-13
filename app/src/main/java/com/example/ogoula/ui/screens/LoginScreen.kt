@@ -25,9 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.example.ogoula.data.AuthRepository
 import com.example.ogoula.ui.AuthViewModel
 import com.example.ogoula.ui.UserViewModel
-import com.example.ogoula.ui.theme.BlueGabo
 import com.example.ogoula.ui.theme.GreenGabo
-import com.example.ogoula.ui.theme.YellowGabo
 
 @Composable
 fun LoginScreen(
@@ -216,11 +214,10 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.weight(1f))
 
-        // Drapeau du Gabon
+        // Bandeau discret (vert + blanc, sans tricolore)
         Row(modifier = Modifier.fillMaxWidth().height(4.dp)) {
             Box(modifier = Modifier.weight(1f).fillMaxHeight().background(GreenGabo))
-            Box(modifier = Modifier.weight(1f).fillMaxHeight().background(YellowGabo))
-            Box(modifier = Modifier.weight(1f).fillMaxHeight().background(BlueGabo))
+            Box(modifier = Modifier.weight(1f).fillMaxHeight().background(Color.White))
         }
     }
 }

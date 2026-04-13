@@ -30,7 +30,6 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
-import com.example.ogoula.ui.theme.BlueGabo
 import com.example.ogoula.ui.theme.GreenGabo
 import java.io.ByteArrayOutputStream
 
@@ -215,7 +214,7 @@ fun StudioMontageScreen(onBack: () -> Unit, onPost: (String?, ByteArray?, Uri?) 
                         Spacer(modifier = Modifier.height(20.dp))
                         
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.TextFields, contentDescription = null, tint = BlueGabo)
+                            Icon(Icons.Default.TextFields, contentDescription = null, tint = GreenGabo)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Ajouter un titre fun", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                             Spacer(modifier = Modifier.weight(1f))

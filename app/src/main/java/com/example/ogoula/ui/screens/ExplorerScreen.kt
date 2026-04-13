@@ -19,9 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ogoula.ui.theme.BlueGabo
 import com.example.ogoula.ui.theme.GreenGabo
-import com.example.ogoula.ui.theme.YellowGabo
 
 @Composable
 fun ExplorerScreen(innerPadding: PaddingValues) {
@@ -114,7 +112,7 @@ fun SuggestedUsers() {
                     modifier = Modifier
                         .size(60.dp)
                         .clip(CircleShape)
-                        .background(YellowGabo)
+                        .background(GreenGabo.copy(alpha = 0.22f))
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -127,7 +125,7 @@ fun SuggestedUsers() {
                         Icons.Default.CheckCircle,
                         contentDescription = "Vérifié",
                         modifier = Modifier.size(12.dp),
-                        tint = BlueGabo
+                        tint = GreenGabo
                     )
                 }
                 Button(

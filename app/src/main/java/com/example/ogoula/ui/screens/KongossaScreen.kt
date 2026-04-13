@@ -23,7 +23,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.ogoula.ui.PostViewModel
-import com.example.ogoula.ui.theme.BlueGabo
 import com.example.ogoula.ui.theme.GreenGabo
 
 @Composable
@@ -197,7 +196,7 @@ fun KongossaContactItem(
                     modifier = Modifier
                         .fillMaxSize()
                         .clip(CircleShape)
-                        .background(BlueGabo),
+                        .background(GreenGabo.copy(alpha = 0.88f)),
                     contentAlignment = Alignment.Center
                 ) {
                     if (imageUri != null) {

@@ -1,9 +1,12 @@
 package com.example.ogoula.ui.screens
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,6 +17,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -23,6 +27,9 @@ import coil.compose.AsyncImage
 import com.example.ogoula.ui.Community
 import com.example.ogoula.ui.PostViewModel
 import com.example.ogoula.ui.theme.GreenGabo
+
+private const val OGUALA_INVITE_URL = "https://www.ogoula.com/invite"
+private const val OGUALA_WEB_URL = "https://www.ogoula.com/"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -104,25 +111,23 @@ fun CommunitySettingsSheet(
     onDismiss: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val context = LocalContext.current
     var showDeleteDialog by remember { mutableStateOf(false) }
-    var showMembersSheet by remember { mutableStateOf(false) }
+    val scroll = rememberScrollState()
 
-    // Membres simulés
-    val members = remember {
-        listOf(
-            Triple("Fondateur", community.coverImageUri, true),
-            Triple("Marie Nguema", null, false),
-            Triple("Paul Ondo", null, false),
-            Triple("Lea Mboumba", null, false),
-        )
+    // Un seul membre réel (toi / fondateur) ; les autres s’ajoutent via invitation.
+    val members = remember(community.id, community.name, community.coverImageUri) {
+        listOf(Triple(community.name, community.coverImageUri, true))
     }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(scroll)
+                .navigationBarsPadding()
                 .padding(horizontal = 20.dp)
-                .padding(bottom = 32.dp)
+                .padding(bottom = 40.dp)
         ) {
             // Header communauté
             Box(
@@ -147,14 +152,14 @@ fun CommunitySettingsSheet(
             Spacer(modifier = Modifier.height(12.dp))
             Text(community.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Text(community.description, style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
-            Text("${community.memberCount} membre(s)", style = MaterialTheme.typography.labelMedium, color = GreenGabo)
+            Text("${members.size} membre(s)", style = MaterialTheme.typography.labelMedium, color = GreenGabo)
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
             // ── Membres ──────────────────────────────────────────────────────
             Text("Membres", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(8.dp))
-            members.forEachIndexed { index, (name, imageUri, isAdmin) ->
+            members.forEach { (name, imageUri, _) ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -165,7 +170,7 @@ fun CommunitySettingsSheet(
                         modifier = Modifier
                             .size(36.dp)
                             .clip(CircleShape)
-                            .background(if (isAdmin) GreenGabo else Color.LightGray),
+                            .background(GreenGabo),
                         contentAlignment = Alignment.Center
                     ) {
                         if (imageUri != null) {
@@ -176,36 +181,30 @@ fun CommunitySettingsSheet(
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(if (isAdmin) "${community.name} (Vous)" else name, fontWeight = FontWeight.Medium)
-                        if (isAdmin) Text("Admin", style = MaterialTheme.typography.labelSmall, color = GreenGabo)
-                    }
-                    // Options modération (seulement pour les autres membres)
-                    if (!isAdmin) {
-                        var showMemberMenu by remember { mutableStateOf(false) }
-                        Box {
-                            IconButton(onClick = { showMemberMenu = true }) {
-                                Icon(Icons.Default.MoreVert, contentDescription = null, modifier = Modifier.size(18.dp))
-                            }
-                            DropdownMenu(expanded = showMemberMenu, onDismissRequest = { showMemberMenu = false }) {
-                                DropdownMenuItem(
-                                    text = { Text("Rendre admin") },
-                                    leadingIcon = { Icon(Icons.Default.AdminPanelSettings, contentDescription = null) },
-                                    onClick = { showMemberMenu = false }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Rendre muet") },
-                                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.VolumeOff, contentDescription = null) },
-                                    onClick = { showMemberMenu = false }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Expulser", color = MaterialTheme.colorScheme.error) },
-                                    leadingIcon = { Icon(Icons.Default.PersonRemove, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
-                                    onClick = { showMemberMenu = false }
-                                )
-                            }
-                        }
+                        Text("$name (Vous)", fontWeight = FontWeight.Medium)
+                        Text("Admin", style = MaterialTheme.typography.labelSmall, color = GreenGabo)
                     }
                 }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = {
+                    val text =
+                        "Rejoins la communauté « ${community.name} » sur Ogoula — réseau pour nos cultures et le lien entre nous. " +
+                            "Télécharge l’app : $OGUALA_INVITE_URL — infos : $OGUALA_WEB_URL"
+                    val intent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, text)
+                    }
+                    context.startActivity(Intent.createChooser(intent, "Inviter des membres"))
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Inviter des membres")
             }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))

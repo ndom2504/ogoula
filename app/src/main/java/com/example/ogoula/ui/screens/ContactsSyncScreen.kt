@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ContactPhone
 import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -35,6 +36,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+private const val OGUALA_INVITE_URL = "https://www.ogoula.com/invite"
+private const val OGUALA_WEB_URL = "https://www.ogoula.com/"
+
 data class DeviceContact(
     val name: String,
     val phone: String,
@@ -53,6 +57,7 @@ fun ContactsSyncScreen(onBack: () -> Unit) {
     var contacts by remember { mutableStateOf<List<DeviceContact>>(emptyList()) }
     var lastSyncTime by remember { mutableStateOf<String?>(null) }
     var permissionDenied by remember { mutableStateOf(false) }
+    var contactSearch by remember { mutableStateOf("") }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -155,8 +160,27 @@ fun ContactsSyncScreen(onBack: () -> Unit) {
                         }
                     }
 
-                    val onApp = contacts.filter { it.isOnApp }
-                    val notOnApp = contacts.filter { !it.isOnApp }
+                    val q = contactSearch.trim().lowercase()
+                    fun matches(c: DeviceContact): Boolean =
+                        q.isEmpty() ||
+                            c.name.lowercase().contains(q) ||
+                            c.phone.lowercase().contains(q)
+                    val onApp = contacts.filter { it.isOnApp && matches(it) }
+                    val notOnApp = contacts.filter { !it.isOnApp && matches(it) }
+
+                    OutlinedTextField(
+                        value = contactSearch,
+                        onValueChange = { contactSearch = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        placeholder = { Text("Rechercher un contact (nom ou numéro)…") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Search, contentDescription = null, tint = GreenGabo)
+                        },
+                        singleLine = true,
+                        shape = MaterialTheme.shapes.large
+                    )
 
                     LazyColumn(modifier = Modifier.weight(1f)) {
                         if (onApp.isNotEmpty()) {
@@ -194,7 +218,7 @@ fun ContactsSyncScreen(onBack: () -> Unit) {
                                         val smsIntent = Intent(Intent.ACTION_SENDTO, smsUri).apply {
                                             putExtra(
                                                 "sms_body",
-                                                "Hé ${contact.name.split(" ").first()} ! Rejoins-moi sur Ogoula — un réseau pensé pour les cultures africaines et le monde. Infos : https://ogoula.com"
+                                                "Hé ${contact.name.split(" ").first()} ! Rejoins-moi sur Ogoula — un réseau pensé pour les cultures africaines et le monde. Télécharge l’app : $OGUALA_INVITE_URL — infos : $OGUALA_WEB_URL"
                                             )
                                         }
                                         context.startActivity(smsIntent)

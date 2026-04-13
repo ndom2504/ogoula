@@ -28,9 +28,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.ogoula.ui.theme.BlueGabo
 import com.example.ogoula.ui.theme.GreenGabo
-import com.example.ogoula.ui.theme.YellowGabo
+import com.example.ogoula.ui.theme.OgoulaSurfaceTint
 import com.example.ogoula.ui.components.PostItem
 import com.example.ogoula.ui.PostViewModel
 import com.example.ogoula.ui.UserViewModel
@@ -120,7 +119,9 @@ fun ProfileHeader(userViewModel: UserViewModel, onMenuClick: () -> Unit, onEditC
                 .fillMaxWidth()
                 .height(150.dp)
                 .background(
-                    brush = Brush.horizontalGradient(listOf(GreenGabo, YellowGabo, BlueGabo))
+                    brush = Brush.horizontalGradient(
+                        listOf(GreenGabo, GreenGabo.copy(alpha = 0.82f), OgoulaSurfaceTint),
+                    )
                 )
         ) {
             if (!profile.bannerImageUri.isNullOrEmpty()) {
@@ -211,7 +212,7 @@ fun PopulariteDashboard(viewModel: PostViewModel, userAlias: String) {
                 modifier = Modifier
                     .size(50.dp)
                     .clip(CircleShape)
-                    .background(BlueGabo),
+                    .background(GreenGabo),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(Icons.AutoMirrored.Filled.TrendingUp, contentDescription = null, tint = Color.White)
@@ -233,7 +234,7 @@ fun PopulariteDashboard(viewModel: PostViewModel, userAlias: String) {
                 LinearProgressIndicator(
                     progress = { (score.toFloat() / 1000f).coerceAtMost(1f) },
                     modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
-                    color = BlueGabo,
+                    color = GreenGabo,
                     trackColor = Color.White.copy(alpha = 0.5f)
                 )
             }
