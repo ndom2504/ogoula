@@ -1,4 +1,6 @@
 import java.util.Properties
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     alias(libs.plugins.android.application)
@@ -6,16 +8,33 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+/*
+ * ---------- Chargement des propriétés locales ----------
+ */
 val localProperties = Properties()
 val localPropertiesFile = rootProject.file("local.properties")
 if (localPropertiesFile.exists()) {
-    localPropertiesFile.reader(Charsets.UTF_8).use { localProperties.load(it) }
+    localPropertiesFile.reader(Charsets.UTF_8).use {
+        localProperties.load(it)
+    }
 }
+
 fun String.escapeForBuildConfig(): String =
     replace("\\", "\\\\").replace("\"", "\\\"")
 
 val supabaseUrl = (localProperties.getProperty("supabase.url") ?: "").trim()
 val supabaseAnonKey = (localProperties.getProperty("supabase.anon.key") ?: "").trim()
+
+/*
+ * ---------- Keystore ----------
+ */
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties()
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.reader(Charsets.UTF_8).use {
+        keystoreProperties.load(it)
+    }
+}
 
 android {
     namespace = "com.ogoula.app"
@@ -25,6 +44,7 @@ android {
         applicationId = "com.ogoula.app"
         minSdk = 26
         targetSdk = 36
+
         versionCode = 1
         versionName = "1.0"
 
@@ -33,13 +53,29 @@ android {
         buildConfigField(
             "String",
             "SUPABASE_URL",
-            "\"${supabaseUrl.escapeForBuildConfig()}\"",
+            "\"${supabaseUrl.escapeForBuildConfig()}\""
         )
         buildConfigField(
             "String",
             "SUPABASE_ANON_KEY",
-            "\"${supabaseAnonKey.escapeForBuildConfig()}\"",
+            "\"${supabaseAnonKey.escapeForBuildConfig()}\""
         )
+    }
+
+    /*
+     * ---------- Signature release ----------
+     */
+    signingConfigs {
+        if (keystorePropertiesFile.exists()) {
+            create("release") {
+                storeFile = rootProject.file(
+                    keystoreProperties.getProperty("storeFile")
+                )
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
     }
 
     buildTypes {
@@ -49,23 +85,47 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
+
+    /*
+     * ---------- JAVA 17 (O-BLI-GA-TOI-RE) ----------
+     */
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
+
+    java {
+        toolchain {
+            languageVersion.set(JavaLanguageVersion.of(17))
+        }
+    }
+
     buildFeatures {
         compose = true
         buildConfig = true
     }
 }
 
+tasks.withType<KotlinCompile>().configureEach {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
+    }
+}
+
 dependencies {
+
+    // Core
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.activity.compose)
+
+    // Compose
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
@@ -73,17 +133,27 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material3.adaptive.navigation.suite)
     implementation(libs.androidx.compose.material.icons.extended)
+    implementation("androidx.compose.foundation:foundation")
+
+    // Navigation
+    implementation(libs.androidx.navigation.compose)
+
+    // Media3
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.ui)
     implementation(libs.androidx.media3.datasource.okhttp)
-    implementation(libs.androidx.navigation.compose)
+
+    // Coil
     implementation(libs.coil.compose)
-    
+
     // CameraX
     implementation(libs.androidx.camera.core)
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
+
+    // Session Supabase Auth (SharedPreferences) — voir SupabaseClient + OgoulaApplication
+    implementation(libs.russhwolf.multiplatform.settings)
 
     // Supabase
     implementation(platform(libs.supabase.bom))
@@ -91,14 +161,17 @@ dependencies {
     implementation(libs.supabase.postgrest)
     implementation(libs.supabase.storage)
     implementation(libs.supabase.realtime)
-    // Ktor engine (requis par Supabase)
+
+    // Ktor (requis par Supabase)
     implementation(libs.ktor.client.okhttp)
-    
+
+    // Tests
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

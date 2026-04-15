@@ -2,11 +2,13 @@ package com.example.ogoula.ui.components
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -31,15 +33,20 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import android.content.Context
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.ui.graphics.Brush
@@ -47,6 +54,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
@@ -70,6 +78,13 @@ import java.util.Locale
 internal fun normalizePostTimeEpochMillis(raw: Long): Long {
     if (raw <= 0L) return raw
     return if (raw < 1_000_000_000_000L) raw * 1000L else raw
+}
+
+/** Compare deux handles (@alias ou alias), insensible à la casse. */
+internal fun handlesEqual(a: String, b: String): Boolean {
+    fun norm(s: String) = s.trim().lowercase().removePrefix("@").let { "@$it" }
+    if (a.isBlank() || b.isBlank()) return false
+    return norm(a) == norm(b)
 }
 
 /** Libellé court en français (fil d’actualité). */
@@ -110,7 +125,13 @@ data class Comment(
     val author: String = "",
     val text: String = "",
     val time: Long = 0L,
-    @SerialName("author_image_uri") val authorImageUri: String? = null
+    @SerialName("author_image_uri") val authorImageUri: String? = null,
+    /** Handle du commentateur (ex. @jp_ndong) — sert au score et aux réactions « pas sur soi-même ». */
+    @SerialName("author_handle") val authorHandle: String = "",
+    val validates: Int = 0,
+    val loves: Int = 0,
+    @Transient val isValidatedByMe: Boolean = false,
+    @Transient val isLovedByMe: Boolean = false
 )
 
 @Serializable
@@ -132,7 +153,7 @@ data class Post(
 )
 
 val samplePosts = listOf(
-    Post("1", "Jean-Pierre", "@jp_ndong", "Le ndole de midi était incroyable ! #Cuisine241", System.currentTimeMillis(), 24, 12, listOf(Comment("1", "Moussa", "Vrai ça !", System.currentTimeMillis()))),
+    Post("1", "Jean-Pierre", "@jp_ndong", "Le ndole de midi était incroyable ! #Cuisine241", System.currentTimeMillis(), 24, 12, listOf(Comment(id = "1", author = "Moussa", text = "Vrai ça !", time = System.currentTimeMillis(), authorHandle = "@moussa"))),
     Post("2", "Sarah", "@sarah_gabo", "Magnifique coucher de soleil sur la Pointe-Denis. #GabonEvasion", System.currentTimeMillis(), 156, 89, emptyList()),
     Post("3", "Marc", "@marc_tech", "L'écosystème tech au Gabon est en pleine ébullition. #DigitalGabon", System.currentTimeMillis(), 45, 10, emptyList())
 )
@@ -144,19 +165,28 @@ fun PostItem(
     isFollowed: Boolean = false,
     showFollowButton: Boolean = true,
     currentUserHandle: String = "",
+    /** Lecture inline type réseau social (boucle, mute par défaut) ; sinon vignette + lecture au tap. */
+    useFeedVideoAutoplay: Boolean = false,
+    /** Post le plus proche du centre du viewport — seul ce lecteur joue. */
+    feedVideoActive: Boolean = false,
     onValidate: () -> Unit,
     onLove: () -> Unit,
     onCommentAdded: (String) -> Unit,
+    onCommentValidate: (String) -> Unit = {},
+    onCommentLove: (String) -> Unit = {},
     onShare: () -> Unit,
     onToggleFollow: () -> Unit = {},
     onDelete: (() -> Unit)? = null,
-    onEdit: ((String) -> Unit)? = null
+    onEdit: ((String) -> Unit)? = null,
+    onOpenProfile: (() -> Unit)? = null,
+    /** Ouverture du mode « Playlist » plein écran (toutes les vidéos). */
+    onVideoTapOpenPlaylist: (() -> Unit)? = null,
 ) {
     var showCommentSheet by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     var showEditDialog by remember { mutableStateOf(false) }
     var editedContent by remember { mutableStateOf(post.content) }
-    val isOwnPost = currentUserHandle.isNotEmpty() && post.handle == currentUserHandle
+    val isOwnPost = currentUserHandle.isNotEmpty() && handlesEqual(post.handle, currentUserHandle)
 
     var timeTick by remember(post.id) { mutableIntStateOf(0) }
     LaunchedEffect(post.id, post.time) {
@@ -166,14 +196,20 @@ fun PostItem(
         }
     }
     val timeLabel = remember(post.time, timeTick) { formatRelativeTimeFr(post.time) }
-    
+
+    // Même palette dégradée que VideoPlaylistScreen (cartes « post ordinaire » hors communauté).
+    val cardBackgroundBrush = if (post.isCommunityPost) {
+        Brush.horizontalGradient(listOf(GreenGabo.copy(alpha = 0.14f), GreenGabo.copy(alpha = 0.14f)))
+    } else {
+        Brush.verticalGradient(
+            listOf(Color(0xFF0D0D12), Color(0xFF1A1520), Color(0xFF0D3D2E)),
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(
-                if (post.isCommunityPost) GreenGabo.copy(alpha = 0.14f)
-                else MaterialTheme.colorScheme.surface
-            )
+            .background(cardBackgroundBrush)
     ) {
         if (post.isCommunityPost) {
             Row(modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 2.dp)) {
@@ -189,62 +225,72 @@ fun PostItem(
             }
         }
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
-        // ── En-tête : avatar | infos auteur | bouton action ──
-        Row(verticalAlignment = Alignment.CenterVertically) {
-
-            // Avatar
-            Box(
+        // ── En-tête : avatar | infos auteur (cliquable → profil) | bouton action ──
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
                 modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(GreenGabo.copy(alpha = 0.9f)),
-                contentAlignment = Alignment.Center
+                    .weight(1f)
+                    .clickable(
+                        enabled = onOpenProfile != null && post.handle.isNotBlank(),
+                        onClick = { onOpenProfile?.invoke() }
+                    ),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                if (post.authorImageUri != null) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(post.authorImageUri)
-                            .diskCachePolicy(CachePolicy.DISABLED)
-                            .build(),
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Text(
-                        text = post.author.take(1).uppercase(),
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleSmall
-                    )
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(GreenGabo.copy(alpha = 0.9f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (post.authorImageUri != null) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(post.authorImageUri)
+                                .diskCachePolicy(CachePolicy.DISABLED)
+                                .build(),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Text(
+                            text = post.author.take(1).uppercase(),
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                    }
                 }
-            }
 
-            Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(12.dp))
 
-            // Nom + handle + timestamp sur 2 lignes dans weight(1f)
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = post.author,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = post.handle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = post.author,
+                        fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
+                        style = MaterialTheme.typography.bodyLarge
                     )
-                    Text(
-                        text = " · $timeLabel",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = post.handle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        Text(
+                            text = " · $timeLabel",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
 
@@ -302,20 +348,36 @@ fun PostItem(
         val imageUrlsOnly = post.imageUrls.filter { !it.startsWith("video:") }
 
         if (videoUrlFinal != null) {
-            VideoThumbnailPlayer(
-                thumbnailUrl = imageUrlsOnly.firstOrNull(),
-                videoUrl = videoUrlFinal
-            )
+            if (useFeedVideoAutoplay) {
+                VideoFeedPlayer(
+                    thumbnailUrl = imageUrlsOnly.firstOrNull(),
+                    videoUrl = videoUrlFinal,
+                    isActive = feedVideoActive,
+                    onTapOpenPlaylist = { onVideoTapOpenPlaylist?.invoke() },
+                )
+            } else {
+                VideoThumbnailPlayer(
+                    thumbnailUrl = imageUrlsOnly.firstOrNull(),
+                    videoUrl = videoUrlFinal
+                )
+            }
         } else if (imageUrlsOnly.isNotEmpty()) {
             if (imageUrlsOnly.size == 1) {
-                AsyncImage(
-                    model = imageUrlsOnly[0],
-                    contentDescription = null,
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 200.dp, max = 380.dp),
-                    contentScale = ContentScale.Crop
-                )
+                        .heightIn(max = 520.dp)
+                        .aspectRatio(4f / 5f)
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    AsyncImage(
+                        model = imageUrlsOnly[0],
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit
+                    )
+                }
             } else {
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 4.dp),
@@ -327,8 +389,9 @@ fun PostItem(
                             contentDescription = null,
                             modifier = Modifier
                                 .fillParentMaxWidth(if (imageUrlsOnly.size == 2) 0.5f else 0.75f)
-                                .height(240.dp),
-                            contentScale = ContentScale.Crop
+                                .heightIn(max = 320.dp)
+                                .aspectRatio(3f / 4f),
+                            contentScale = ContentScale.Fit
                         )
                     }
                 }
@@ -336,7 +399,15 @@ fun PostItem(
         }
 
         // ── Réactions ─────────────────────────────────────────────────────
-        HorizontalDivider(modifier = Modifier.padding(top = 4.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+        HorizontalDivider(
+            modifier = Modifier.padding(top = 4.dp),
+            thickness = 0.5.dp,
+            color = if (post.isCommunityPost) {
+                MaterialTheme.colorScheme.outlineVariant
+            } else {
+                Color.White.copy(alpha = 0.18f)
+            },
+        )
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -420,6 +491,9 @@ fun PostItem(
         ) {
             CommentSheetContent(
                 comments = post.comments,
+                currentUserHandle = currentUserHandle,
+                onCommentValidate = onCommentValidate,
+                onCommentLove = onCommentLove,
                 onAddComment = { text -> onCommentAdded(text) }
             )
         }
@@ -429,6 +503,9 @@ fun PostItem(
 @Composable
 fun CommentSheetContent(
     comments: List<Comment>,
+    currentUserHandle: String = "",
+    onCommentValidate: (String) -> Unit = {},
+    onCommentLove: (String) -> Unit = {},
     onAddComment: (String) -> Unit
 ) {
     var newCommentText by remember { mutableStateOf("") }
@@ -464,6 +541,8 @@ fun CommentSheetContent(
                 }
             }
             items(comments) { comment ->
+                val ownComment =
+                    currentUserHandle.isNotBlank() && handlesEqual(comment.authorHandle, currentUserHandle)
                 Row(modifier = Modifier.padding(vertical = 8.dp)) {
                     Box(
                         modifier = Modifier.size(32.dp).clip(CircleShape).background(Color.LightGray),
@@ -479,7 +558,7 @@ fun CommentSheetContent(
                         }
                     }
                     Spacer(modifier = Modifier.width(12.dp))
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         val cTime = remember(comment.time, comment.id, timeTick) {
                             formatRelativeTimeFr(comment.time)
                         }
@@ -490,6 +569,34 @@ fun CommentSheetContent(
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                        if (!ownComment && currentUserHandle.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                ReactionButton(
+                                    icon = if (comment.isValidatedByMe) Icons.Default.ThumbUp else Icons.Outlined.ThumbUp,
+                                    count = comment.validates,
+                                    label = "Je valide",
+                                    onClick = { onCommentValidate(comment.id) },
+                                    activeColor = GreenGabo,
+                                    isActive = comment.isValidatedByMe,
+                                    iconButtonSize = 34.dp,
+                                    iconSize = 18.dp
+                                )
+                                ReactionButton(
+                                    icon = if (comment.isLovedByMe) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                    count = comment.loves,
+                                    label = "J'adore",
+                                    onClick = { onCommentLove(comment.id) },
+                                    activeColor = Color.Red,
+                                    isActive = comment.isLovedByMe,
+                                    iconButtonSize = 34.dp,
+                                    iconSize = 18.dp
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -532,7 +639,9 @@ fun ReactionButton(
     label: String,
     onClick: () -> Unit,
     activeColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-    isActive: Boolean = false
+    isActive: Boolean = false,
+    iconButtonSize: Dp = 40.dp,
+    iconSize: Dp = 22.dp
 ) {
     val scale by animateFloatAsState(
         targetValue = if (isActive) 1.15f else 1f,
@@ -545,11 +654,11 @@ fun ReactionButton(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-        IconButton(onClick = onClick, modifier = Modifier.size(40.dp)) {
+        IconButton(onClick = onClick, modifier = Modifier.size(iconButtonSize)) {
             Icon(
                 imageVector = icon,
                 contentDescription = label,
-                modifier = Modifier.size(22.dp),
+                modifier = Modifier.size(iconSize),
                 tint = if (isActive) activeColor else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -565,6 +674,114 @@ fun ReactionButton(
 }
 
 // ─── Lecteur vidéo ───────────────────────────────────────────────────────────
+
+@OptIn(UnstableApi::class)
+internal fun buildExoPlayerForStoredVideo(context: Context, videoUrl: String): ExoPlayer {
+    val okHttpClient = OkHttpClient.Builder()
+        .addInterceptor { chain ->
+            val request = chain.request().newBuilder()
+                .addHeader("apikey", BuildConfig.SUPABASE_ANON_KEY)
+                .addHeader("Authorization", "Bearer ${BuildConfig.SUPABASE_ANON_KEY}")
+                .build()
+            chain.proceed(request)
+        }
+        .build()
+    val dataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
+    val mediaSource = ProgressiveMediaSource.Factory(dataSourceFactory)
+        .createMediaSource(MediaItem.fromUri(videoUrl))
+    return ExoPlayer.Builder(context).build().apply {
+        setMediaSource(mediaSource)
+        repeatMode = Player.REPEAT_MODE_ONE
+        prepare()
+    }
+}
+
+/**
+ * Vidéo dans le fil : boucle, mute par défaut, son au tap, lecture seulement quand le post est au centre de l’écran.
+ */
+@androidx.annotation.OptIn(UnstableApi::class)
+@Composable
+fun VideoFeedPlayer(
+    thumbnailUrl: String?,
+    videoUrl: String,
+    isActive: Boolean,
+    modifier: Modifier = Modifier,
+    onTapOpenPlaylist: () -> Unit = {},
+) {
+    val context = LocalContext.current
+    var muted by remember { mutableStateOf(true) }
+
+    LaunchedEffect(isActive) {
+        if (!isActive) muted = true
+    }
+
+    val player = remember(videoUrl) { buildExoPlayerForStoredVideo(context, videoUrl) }
+
+    LaunchedEffect(isActive) {
+        if (isActive) {
+            player.playWhenReady = true
+            player.play()
+        } else {
+            player.playWhenReady = false
+            player.pause()
+        }
+    }
+
+    LaunchedEffect(muted) {
+        player.volume = if (muted) 0f else 1f
+    }
+
+    DisposableEffect(player) {
+        onDispose { player.release() }
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .aspectRatio(16f / 9f)
+            .background(Color.Black),
+    ) {
+        AndroidView(
+            factory = { ctx ->
+                PlayerView(ctx).apply {
+                    this.player = player
+                    useController = false
+                    resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+                }
+            },
+            modifier = Modifier.fillMaxSize(),
+        )
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .pointerInput(onTapOpenPlaylist) {
+                    detectTapGestures(onTap = { onTapOpenPlaylist() })
+                },
+        )
+
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(
+                onClick = { muted = !muted },
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(Color.Black.copy(alpha = 0.5f), CircleShape),
+            ) {
+                Icon(
+                    imageVector = if (muted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                    contentDescription = if (muted) "Activer le son" else "Couper le son",
+                    tint = Color.White,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+        }
+    }
+}
 
 /**
  * Aperçu cliquable en 16:9 avec bouton Play.
@@ -682,28 +899,15 @@ fun VideoThumbnailPlayer(thumbnailUrl: String?, videoUrl: String) {
 fun VideoPlayerDialog(videoUrl: String, onDismiss: () -> Unit) {
     val context = LocalContext.current
 
-    val player = remember {
-        val okHttpClient = OkHttpClient.Builder()
-            .addInterceptor { chain ->
-                val request = chain.request().newBuilder()
-                    .addHeader("apikey", BuildConfig.SUPABASE_ANON_KEY)
-                    .addHeader("Authorization", "Bearer ${BuildConfig.SUPABASE_ANON_KEY}")
-                    .build()
-                chain.proceed(request)
-            }
-            .build()
-        val dataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
-        val mediaSource = ProgressiveMediaSource.Factory(dataSourceFactory)
-            .createMediaSource(MediaItem.fromUri(videoUrl))
-
-        ExoPlayer.Builder(context).build().apply {
-            setMediaSource(mediaSource)
-            prepare()
+    val player = remember(videoUrl) {
+        buildExoPlayerForStoredVideo(context, videoUrl).apply {
             playWhenReady = true
         }
     }
 
-    DisposableEffect(Unit) { onDispose { player.release() } }
+    DisposableEffect(player) {
+        onDispose { player.release() }
+    }
 
     Dialog(
         onDismissRequest = onDismiss,

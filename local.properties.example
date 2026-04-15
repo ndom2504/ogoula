@@ -9,3 +9,18 @@ sdk.dir=/chemin/vers/Android/sdk
 # Supabase : Dashboard → Project Settings → API
 supabase.url=https://votre-projet.supabase.co
 supabase.anon.key=votre_cle_anon_publique
+
+# --- Build release / .aab (test interne Play Console) ---
+# 1) keystore : copier keystore.properties.example → keystore.properties à la racine du dépôt, créer le .jks (keytool).
+# 2) Générer l’AAB : double-clic sur build-release-aab.bat ou : .\gradlew.bat bundleRelease
+#    Sortie : app\build\outputs\bundle\release\app-release.aab
+#
+# Si « JAVA_HOME is not set » depuis un terminal (ex. Cursor) :
+# org.gradle.java.home=C:\\Program Files\\Android\\Android Studio\\jbr
+#
+# Si erreur Gradle « Failed to delete … .gradle\.tmp\jdks\… jvm.dll » :
+# 1) Ferme Android Studio / Cursor un instant, ou exécute : .\gradlew.bat --stop
+# 2) Fixe un JDK local (ex. JetBrains) — une ligne suffit :
+# org.gradle.java.home=C:\\Users\\mondong\\.jdks\\ms-17.0.18
+# 3) Optionnel après --stop, supprime le cache JDK temporaire :
+# Remove-Item -Recurse -Force "$env:USERPROFILE\.gradle\.tmp\jdks" -ErrorAction SilentlyContinue

@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.example.ogoula.ui.components.PostPublicationImagePreview
 import com.example.ogoula.ui.UserViewModel
 import com.example.ogoula.ui.theme.GreenGabo
 import kotlinx.coroutines.Dispatchers
@@ -141,20 +142,20 @@ fun CreatePostScreen(
 
             if (selectedImages.isNotEmpty()) {
                 LazyRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(selectedImages) { uri ->
-                        Box {
-                            AsyncImage(
-                                model = uri,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .size(120.dp)
-                                    .clip(RoundedCornerShape(8.dp)),
-                                contentScale = ContentScale.Crop
+                        Box(
+                            modifier = if (selectedImages.size == 1) {
+                                Modifier.fillMaxWidth()
+                            } else {
+                                Modifier.widthIn(max = 180.dp)
+                            }
+                        ) {
+                            PostPublicationImagePreview(
+                                imageModel = uri,
+                                modifier = Modifier.fillMaxWidth(),
                             )
                             IconButton(
                                 onClick = { selectedImages.remove(uri) },

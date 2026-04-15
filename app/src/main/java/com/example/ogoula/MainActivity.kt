@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,6 +31,7 @@ import androidx.compose.material3.*
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -48,10 +50,16 @@ import com.example.ogoula.ui.screens.*
 import com.example.ogoula.ui.theme.OgoulaTheme
 import com.example.ogoula.ui.theme.OgoulaWhite
 import com.example.ogoula.data.AuthRepository
+import com.example.ogoula.data.SupabaseClient
+import com.example.ogoula.ui.screens.PublicUserProfileScreen
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Filet de sécurité si la classe Application n’est pas utilisée : session Auth persistante.
+        SupabaseClient.initAndroidContext(applicationContext)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
@@ -71,8 +79,11 @@ class MainActivity : ComponentActivity() {
 
                 LaunchedEffect(authState) {
                     when (authState) {
-                        is AuthRepository.AuthState.Authenticated ->
-                            userViewModel.loadProfile((authState as AuthRepository.AuthState.Authenticated).userId)
+                        is AuthRepository.AuthState.Authenticated -> {
+                            val uid = (authState as AuthRepository.AuthState.Authenticated).userId
+                            userViewModel.loadProfile(uid)
+                            storyViewModel.refresh()
+                        }
                         is AuthRepository.AuthState.LoggedOut ->
                             userViewModel.resetProfile()
                         else -> {}
@@ -80,23 +91,50 @@ class MainActivity : ComponentActivity() {
                 }
 
                 LaunchedEffect(isProfileLoaded, authState, hasProfile) {
-                    if (!isProfileLoaded) return@LaunchedEffect
-                    if (authState !is AuthRepository.AuthState.Authenticated) return@LaunchedEffect
-                    val currentRoute = navController.currentDestination?.route
-                    if (currentRoute != "login" && currentRoute != "splash") return@LaunchedEffect
+                    // Logs plus visibles avec System.out
+                    System.out.println("=== AUTH FLOW DEBUG ===")
+                    System.out.println("isProfileLoaded: $isProfileLoaded")
+                    System.out.println("hasProfile: $hasProfile")
+                    System.out.println("authState: $authState")
+                    android.util.Log.d("MainActivity", "Auth flow: isProfileLoaded=$isProfileLoaded, hasProfile=$hasProfile, authState=$authState")
+                    
+                    if (!isProfileLoaded) {
+                        System.out.println("❌ Profile not loaded yet, waiting...")
+                        android.util.Log.d("MainActivity", "Profile not loaded yet, waiting...")
+                        return@LaunchedEffect
+                    }
+                    if (authState !is AuthRepository.AuthState.Authenticated) {
+                        System.out.println("❌ Not authenticated, waiting...")
+                        android.util.Log.d("MainActivity", "Not authenticated, waiting...")
+                        return@LaunchedEffect
+                    }
+                    val currentRoute = navController.currentDestination?.route ?: return@LaunchedEffect
+                    System.out.println("📍 Current route: $currentRoute")
+                    android.util.Log.d("MainActivity", "Current route: $currentRoute")
 
                     val modMsg = userViewModel.peekAccountModerationMessage()
                     if (modMsg != null) {
+                        System.out.println("🚫 Account moderated: $modMsg")
+                        android.util.Log.d("MainActivity", "Account moderated: $modMsg")
                         userViewModel.putAccountDenialMessage(modMsg)
                         authViewModel.logout()
                         return@LaunchedEffect
                     }
 
                     if (hasProfile) {
-                        navController.navigate("main") { popUpTo(0) { inclusive = true } }
+                        System.out.println("✅ SUCCESS: Profil avec identité enregistrée, navigation vers main")
+                        android.util.Log.d("MainActivity", "✅ hasProfile=true → main")
+                        if (currentRoute == "login" || currentRoute == "splash" || currentRoute == "profile_creation" || currentRoute == "bootstrap") {
+                            navController.navigate("main") { popUpTo(0) { inclusive = true } }
+                        }
                     } else {
-                        navController.navigate("profile_creation") { popUpTo(0) { inclusive = true } }
+                        System.out.println("❌ FAILED: Pas d'identité profil (serveur/cache), navigation vers profile_creation")
+                        android.util.Log.d("MainActivity", "❌ hasProfile=false → profile_creation")
+                        if (currentRoute == "login" || currentRoute == "splash" || currentRoute == "bootstrap") {
+                            navController.navigate("profile_creation") { popUpTo(0) { inclusive = true } }
+                        }
                     }
+                    System.out.println("=== END AUTH FLOW DEBUG ===")
                 }
 
                 NavHost(
@@ -107,10 +145,43 @@ class MainActivity : ComponentActivity() {
                 ) {
                     composable("splash") {
                         SplashScreen(onVideoFinished = {
-                            navController.navigate("login") {
-                                popUpTo("splash") { inclusive = true }
+                            when (authState) {
+                                is AuthRepository.AuthState.Authenticated ->
+                                    navController.navigate("bootstrap") {
+                                        popUpTo("splash") { inclusive = true }
+                                    }
+                                else ->
+                                    navController.navigate("login") {
+                                        popUpTo("splash") { inclusive = true }
+                                    }
                             }
                         })
+                    }
+                    composable("bootstrap") {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            LaunchedEffect(authState, isProfileLoaded, hasProfile) {
+                                if (authState !is AuthRepository.AuthState.Authenticated) {
+                                    navController.navigate("login") {
+                                        popUpTo(0) { inclusive = true }
+                                    }
+                                    return@LaunchedEffect
+                                }
+                                if (!isProfileLoaded) return@LaunchedEffect
+                                if (hasProfile) {
+                                    navController.navigate("main") {
+                                        popUpTo(0) { inclusive = true }
+                                    }
+                                } else {
+                                    navController.navigate("profile_creation") {
+                                        popUpTo(0) { inclusive = true }
+                                    }
+                                }
+                            }
+                            CircularProgressIndicator()
+                        }
                     }
                     composable("login") {
                         LoginScreen(
@@ -119,14 +190,19 @@ class MainActivity : ComponentActivity() {
                             onLoginSuccess = {}
                         )
                     }
-                    composable("profile_creation") {
+                    composable("profile_creation") { backStackEntry ->
+                        val communityCharterRead by backStackEntry.savedStateHandle
+                            .getStateFlow("charter_community_read", false)
+                            .collectAsState()
                         ProfileCreationScreen(
                             userViewModel = userViewModel,
+                            communityCharterRead = communityCharterRead,
                             onNavigateToMain = {
                                 navController.navigate("main") {
                                     popUpTo("profile_creation") { inclusive = true }
                                 }
-                            }
+                            },
+                            onReadCharter = { navController.navigate("community_charter") },
                         )
                     }
                     composable("main") {
@@ -174,7 +250,54 @@ class MainActivity : ComponentActivity() {
                                 navController.navigate("login") {
                                     popUpTo("main") { inclusive = true }
                                 }
-                            }
+                            },
+                            onOpenUserProfile = { handle ->
+                                if (handle.isNotBlank()) {
+                                    navController.navigate(
+                                        "user_profile/${android.net.Uri.encode(handle.trim(), StandardCharsets.UTF_8.name())}"
+                                    )
+                                }
+                            },
+                            onOpenVideoPlaylist = { postId ->
+                                if (postId.isNotBlank()) {
+                                    navController.navigate(
+                                        "video_playlist/${android.net.Uri.encode(postId, StandardCharsets.UTF_8.name())}"
+                                    )
+                                }
+                            },
+                        )
+                    }
+                    composable(
+                        "video_playlist/{postId}",
+                        arguments = listOf(navArgument("postId") { type = NavType.StringType })
+                    ) { entry ->
+                        val encoded = entry.arguments?.getString("postId").orEmpty()
+                        val postId = URLDecoder.decode(encoded, StandardCharsets.UTF_8.name())
+                        VideoPlaylistScreen(
+                            initialPostId = postId,
+                            postViewModel = postViewModel,
+                            userViewModel = userViewModel,
+                            onBack = { navController.popBackStack() },
+                            onOpenUserProfile = { handle ->
+                                if (handle.isNotBlank()) {
+                                    navController.navigate(
+                                        "user_profile/${android.net.Uri.encode(handle.trim(), StandardCharsets.UTF_8.name())}"
+                                    )
+                                }
+                            },
+                        )
+                    }
+                    composable(
+                        "user_profile/{handle}",
+                        arguments = listOf(navArgument("handle") { type = NavType.StringType })
+                    ) { entry ->
+                        val encoded = entry.arguments?.getString("handle").orEmpty()
+                        val handle = URLDecoder.decode(encoded, StandardCharsets.UTF_8.name())
+                        PublicUserProfileScreen(
+                            userHandle = handle,
+                            userViewModel = userViewModel,
+                            followedHandles = postViewModel.followedUsers,
+                            onBack = { navController.popBackStack() }
                         )
                     }
                     composable(
@@ -242,14 +365,15 @@ class MainActivity : ComponentActivity() {
                             onBack = { navController.popBackStack() },
                             onStoryCreated = { text, imageUrl ->
                                 val profile = userViewModel.userProfile
-                                storyViewModel.addStory(
-                                    userId = profile.userId,
-                                    author = profile.firstName.ifEmpty { "Moi" },
+                                val (ok, err) = storyViewModel.publishStory(
+                                    author = "${profile.firstName} ${profile.lastName}".trim()
+                                        .ifEmpty { profile.alias },
+                                    authorHandle = profile.alias,
                                     text = text,
                                     imageUrl = imageUrl,
                                 )
-                                mainDestination = AppDestinations.HOME
-                                navController.popBackStack()
+                                if (ok) mainDestination = AppDestinations.HOME
+                                ok to err
                             }
                         )
                     }
@@ -273,12 +397,26 @@ class MainActivity : ComponentActivity() {
                     }
                     composable("privacy_settings") {
                         PrivacySettingsScreen(
+                            userViewModel = userViewModel,
                             onBack = { navController.popBackStack() },
                             onNavigateToCharter = { navController.navigate("community_charter") },
                         )
                     }
                     composable("community_charter") {
-                        CommunityCharterScreen(onBack = { navController.popBackStack() })
+                        CommunityCharterScreen(
+                            onBack = {
+                                val prev = navController.previousBackStackEntry
+                                if (prev?.destination?.route == "profile_creation") {
+                                    prev.savedStateHandle["charter_community_read"] = true
+                                }
+                                navController.popBackStack()
+                            }
+                        )
+                    }
+                    composable("admin") {
+                        AdminScreen(
+                            onBack = { navController.popBackStack() }
+                        )
                     }
                 }
             }
@@ -305,7 +443,9 @@ fun OgoulaApp(
     onEditProfileClick: () -> Unit,
     onPrivacySettingsClick: () -> Unit,
     onCommunityCharterClick: () -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onOpenUserProfile: (String) -> Unit = {},
+    onOpenVideoPlaylist: (String) -> Unit = {},
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -462,6 +602,8 @@ fun OgoulaApp(
                         userViewModel = userViewModel,
                         onAwasClick = onCreatePostClick,
                         onAddStoryClick = onAddStoryClick,
+                        onOpenUserProfile = onOpenUserProfile,
+                        onOpenVideoPlaylist = onOpenVideoPlaylist,
                     )
                     AppDestinations.COMMUNITY -> CommunityScreen(
                         innerPadding = innerPadding,
@@ -478,9 +620,12 @@ fun OgoulaApp(
                     AppDestinations.PROFILE -> ProfileScreen(
                         innerPadding = innerPadding,
                         postViewModel = postViewModel,
+                        storyViewModel = storyViewModel,
                         userViewModel = userViewModel,
                         onMenuClick = { scope.launch { drawerState.open() } },
-                        onEditClick = onEditProfileClick
+                        onEditClick = onEditProfileClick,
+                        onOpenUserProfile = onOpenUserProfile,
+                        onOpenVideoPlaylist = onOpenVideoPlaylist,
                     )
                 }
             }

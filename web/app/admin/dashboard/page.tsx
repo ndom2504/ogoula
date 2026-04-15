@@ -71,15 +71,36 @@ export default function AdminDashboard() {
     setAdminEmail(user.email ?? "");
   }, [router]);
 
+  const loadProfilesForAdmin = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (token) {
+      try {
+        const res = await fetch("/api/admin/profiles", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const j = (await res.json()) as { data?: Profile[] };
+          if (Array.isArray(j.data)) return j.data;
+        }
+      } catch {
+        /* fallback client */
+      }
+    }
+    const profilesRes = await supabase.from("profiles").select("*").order("first_name");
+    if (profilesRes.error) console.error("profiles", profilesRes.error);
+    return profilesRes.data ?? [];
+  }, []);
+
   const loadData = useCallback(async () => {
     setLoading(true);
-    const [profilesRes, postsRes, commRes, storiesRes] = await Promise.all([
-      supabase.from("profiles").select("*").order("first_name"),
+    const [profilesList, postsRes, commRes, storiesRes] = await Promise.all([
+      loadProfilesForAdmin(),
       supabase.from("posts").select("*").order("time", { ascending: false }),
       supabase.from("communities").select("*").order("created_at", { ascending: false }),
       supabase.from("stories").select("*").order("created_at", { ascending: false }),
     ]);
-    setProfiles(profilesRes.data ?? []);
+    setProfiles(profilesList);
     setPosts(postsRes.data ?? []);
     if (commRes.error) {
       setCommunitiesLoadError(commRes.error.message);
@@ -96,7 +117,7 @@ export default function AdminDashboard() {
       setStories((storiesRes.data ?? []) as StoryRow[]);
     }
     setLoading(false);
-  }, []);
+  }, [loadProfilesForAdmin]);
 
   useEffect(() => { checkAuth(); loadData(); }, [checkAuth, loadData]);
 
@@ -320,7 +341,12 @@ export default function AdminDashboard() {
   }
 
   async function deleteUser(userId: string) {
-    if (!confirm("Supprimer ce profil ? L'utilisateur perdra ses données.")) return;
+    if (
+      !confirm(
+        "Supprimer la ligne profil (données Ogoula) ? Le compte de connexion Supabase Auth reste : pour libérer l’e-mail, supprime aussi l’utilisateur dans le tableau Supabase → Authentication → Users.",
+      )
+    )
+      return;
     await supabase.from("profiles").delete().eq("user_id", userId);
     setProfiles((prev) => prev.filter((p) => p.user_id !== userId));
     showMsg("Profil supprimé ✓");
@@ -797,6 +823,11 @@ export default function AdminDashboard() {
         {tab === "users" && (
           <div className="space-y-5">
             <SearchBar value={search} onChange={setSearch} placeholder="Rechercher un utilisateur…" />
+            <p className="text-gray-600 text-xs bg-sky-50 border border-sky-100 rounded-xl px-4 py-3">
+              Après suppression ici, l’e-mail peut encore être « déjà utilisé » à l’inscription : ce panneau enlève surtout la ligne{" "}
+              <code className="bg-white px-1 rounded">profiles</code>, pas l’entrée dans{" "}
+              <strong>Supabase → Authentication → Users</strong>. Ouvre ce tableau pour supprimer définitivement le compte de connexion.
+            </p>
             <p className="text-gray-500 text-xs bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
               Modération : exécute d&apos;abord le script SQL{" "}
               <code className="bg-white px-1 rounded">docs/supabase_profiles_moderation.sql</code> dans Supabase.

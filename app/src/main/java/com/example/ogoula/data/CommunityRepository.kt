@@ -13,11 +13,22 @@ private data class CommunityRow(
     val description: String = "",
     @SerialName("cover_url") val coverUrl: String? = null,
     @SerialName("member_count") val memberCount: Int = 1,
+    @SerialName("user_id") val userId: String? = null,
 )
 
 class CommunityRepository {
     private val supabase = SupabaseClient.client
 
+    private fun CommunityRow.toCommunity() = Community(
+        id = id,
+        name = name,
+        description = description,
+        coverImageUri = coverUrl,
+        memberCount = memberCount,
+        creatorUserId = userId.orEmpty(),
+    )
+
+    /** Toutes les communautés (ex. admin / migration). */
     suspend fun getAll(): List<Community> {
         return try {
             supabase.from("communities")
@@ -25,29 +36,43 @@ class CommunityRepository {
                     order("created_at", order = Order.DESCENDING)
                 }
                 .decodeList<CommunityRow>()
-                .map { row ->
-                    Community(
-                        id = row.id,
-                        name = row.name,
-                        description = row.description,
-                        coverImageUri = row.coverUrl,
-                        memberCount = row.memberCount,
-                    )
-                }
+                .map { it.toCommunity() }
         } catch (e: Exception) {
             e.printStackTrace()
             emptyList()
         }
     }
 
-    suspend fun upsert(community: Community) {
+    /** Communautés créées par l’utilisateur connecté (Bled : « mes » communautés uniquement). */
+    suspend fun getMine(creatorUserId: String): List<Community> {
+        val uid = creatorUserId.trim().lowercase()
+        if (uid.isEmpty()) return emptyList()
+        return try {
+            supabase.from("communities")
+                .select {
+                    filter { eq("user_id", uid) }
+                    order("created_at", order = Order.DESCENDING)
+                }
+                .decodeList<CommunityRow>()
+                .map { it.toCommunity() }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+
+    suspend fun upsert(community: Community, creatorUserId: String? = null) {
         try {
+            val uid = creatorUserId?.trim()?.lowercase().orEmpty().ifEmpty {
+                community.creatorUserId.trim().lowercase()
+            }
             val row = CommunityRow(
                 id = community.id,
                 name = community.name,
                 description = community.description,
                 coverUrl = community.coverImageUri,
                 memberCount = community.memberCount,
+                userId = uid.ifEmpty { null },
             )
             supabase.from("communities").upsert(row)
         } catch (e: Exception) {

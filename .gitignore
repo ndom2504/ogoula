@@ -10,6 +10,12 @@
 .cxx
 local.properties
 
+# Signature release Play Store (ne jamais committer)
+keystore.properties
+*.jks
+*.keystore
+upload_certificate.pem
+
 # Firebase (télécharger depuis la console Firebase → ton app Android)
 app/google-services.json
 

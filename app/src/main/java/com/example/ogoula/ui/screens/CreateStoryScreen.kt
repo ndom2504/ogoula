@@ -13,14 +13,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 import com.example.ogoula.data.StorageRepository
+import com.example.ogoula.ui.components.StoryPublicationPreview
 import com.example.ogoula.ui.theme.GreenGabo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -31,11 +29,13 @@ import java.util.UUID
 @Composable
 fun CreateStoryScreen(
     onBack: () -> Unit,
-    onStoryCreated: (String?, String?) -> Unit   // (texte, imageUrl Supabase)
+    /** Premier booléen : succès ; second : message d’erreur si échec (affiché dans la boîte de dialogue). */
+    onStoryCreated: suspend (String?, String?) -> Pair<Boolean, String?>,
 ) {
     var storyText by remember { mutableStateOf("") }
     var selectedImageUri by remember { mutableStateOf<android.net.Uri?>(null) }
     var isSharing by remember { mutableStateOf(false) }
+    var publishError by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val storageRepository = remember { StorageRepository() }
@@ -45,10 +45,21 @@ fun CreateStoryScreen(
         onResult = { uri -> selectedImageUri = uri }
     )
 
+    publishError?.let { msg ->
+        AlertDialog(
+            onDismissRequest = { publishError = null },
+            title = { Text("Publication impossible") },
+            text = { Text(msg) },
+            confirmButton = {
+                TextButton(onClick = { publishError = null }) { Text("OK") }
+            },
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Ajouter au Quartier") },
+                title = { Text("Ajouter au quartier") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")
@@ -60,26 +71,46 @@ fun CreateStoryScreen(
                             if (isSharing) return@Button
                             isSharing = true
                             scope.launch {
-                                var imageUrl: String? = null
-                                // Upload l'image vers Supabase pour avoir une URL persistante
-                                if (selectedImageUri != null) {
-                                    try {
-                                        val bytes = withContext(Dispatchers.IO) {
-                                            context.contentResolver.openInputStream(selectedImageUri!!)?.use { it.readBytes() }
-                                        }
-                                        if (bytes != null) {
-                                            imageUrl = try {
-                                                storageRepository.uploadStoryImage(UUID.randomUUID().toString(), bytes)
-                                            } catch (e: Exception) {
-                                                android.util.Log.e("CreateStory", "Upload image story échoué", e)
-                                                null
+                                try {
+                                    var imageUrl: String? = null
+                                    if (selectedImageUri != null) {
+                                        try {
+                                            val bytes = withContext(Dispatchers.IO) {
+                                                context.contentResolver.openInputStream(selectedImageUri!!)
+                                                    ?.use { it.readBytes() }
                                             }
+                                            if (bytes != null) {
+                                                imageUrl = try {
+                                                    storageRepository.uploadStoryImage(
+                                                        UUID.randomUUID().toString(),
+                                                        bytes
+                                                    )
+                                                } catch (e: Exception) {
+                                                    android.util.Log.e("CreateStory", "Upload image story échoué", e)
+                                                    null
+                                                }
+                                            }
+                                        } catch (e: Exception) {
+                                            android.util.Log.e("CreateStory", "Lecture image story échouée", e)
                                         }
-                                    } catch (e: Exception) {
-                                        android.util.Log.e("CreateStory", "Lecture image story échouée", e)
                                     }
+                                    if (selectedImageUri != null && imageUrl.isNullOrBlank()) {
+                                        publishError =
+                                            "L’image n’a pas pu être envoyée. Vérifie ta connexion, que tu es connecté, " +
+                                                "et la configuration du bucket « posts » sur Supabase."
+                                        return@launch
+                                    }
+                                    val (ok, err) = onStoryCreated(storyText.ifBlank { null }, imageUrl)
+                                    if (ok) {
+                                        onBack()
+                                    } else {
+                                        publishError = err
+                                            ?: "La story n’a pas été enregistrée. Vérifie ta connexion et que tu es bien connecté. " +
+                                                "Si le problème continue, la configuration Supabase doit être vérifiée (table stories, stockage « posts »)."
+                                    }
+                                } finally {
+                                    isSharing = false
                                 }
-                                onStoryCreated(storyText.ifBlank { null }, imageUrl)
                             }
                         },
                         enabled = (storyText.isNotBlank() || selectedImageUri != null) && !isSharing,
@@ -102,23 +133,11 @@ fun CreateStoryScreen(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(
-                modifier = Modifier
-                    .width(200.dp)
-                    .height(320.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(if (selectedImageUri == null) GreenGabo else Color.Black),
-                contentAlignment = Alignment.Center
+            StoryPublicationPreview(
+                imageModel = selectedImageUri,
+                placeholderColor = if (selectedImageUri == null) GreenGabo else Color.Black,
+                modifier = Modifier.fillMaxWidth(),
             ) {
-                if (selectedImageUri != null) {
-                    AsyncImage(
-                        model = selectedImageUri,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-
                 TextField(
                     value = storyText,
                     onValueChange = { storyText = it },

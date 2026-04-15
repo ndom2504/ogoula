@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,14 +21,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.ogoula.ui.UserViewModel
 import com.example.ogoula.ui.theme.GreenGabo
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PrivacySettingsScreen(
+    userViewModel: UserViewModel,
     onBack: () -> Unit,
     onNavigateToCharter: () -> Unit = {},
 ) {
+    val profile = userViewModel.userProfile
+    val culturalVisibility = profile.culturalProfileVisibility ?: "everyone"
 
     // États locaux des paramètres
     var profilPublic        by remember { mutableStateOf(true) }
@@ -94,6 +99,45 @@ fun PrivacySettingsScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = GreenGabo)
                     }
                 }
+            }
+
+            item {
+                PrivacySectionHeader(
+                    icon = Icons.Default.Visibility,
+                    title = "Engagement sur le profil public"
+                )
+            }
+            item {
+                Text(
+                    text = "Pays de référence, intentions, rôle et phrase de contribution (visibles quand quelqu’un ouvre votre profil depuis un post).",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+            }
+            item {
+                CulturalVisibilityChoice(
+                    title = "Visible par tous",
+                    subtitle = "Tout utilisateur connecté peut lire votre engagement.",
+                    selected = culturalVisibility == "everyone",
+                    onSelect = { userViewModel.saveCulturalProfileVisibility("everyone") }
+                )
+            }
+            item {
+                CulturalVisibilityChoice(
+                    title = "Uniquement pour mes abonnés Ogoula",
+                    subtitle = "Seules les personnes qui vous suivent (bouton Suivre sur vos posts) voient ce bloc.",
+                    selected = culturalVisibility == "followers_only",
+                    onSelect = { userViewModel.saveCulturalProfileVisibility("followers_only") }
+                )
+            }
+            item {
+                CulturalVisibilityChoice(
+                    title = "Masqué pour tout le monde",
+                    subtitle = "Personne d’autre ne voit votre engagement ; vous le voyez encore sur votre fiche.",
+                    selected = culturalVisibility == "hidden",
+                    onSelect = { userViewModel.saveCulturalProfileVisibility("hidden") }
+                )
             }
 
             // ── Section : Visibilité du profil ──────────────────────────────
@@ -219,8 +263,8 @@ fun PrivacySettingsScreen(
                             modifier = Modifier.size(20.dp).padding(top = 2.dp)
                         )
                         Text(
-                            text = "Ces paramètres sont sauvegardés localement. " +
-                                    "La synchronisation avec nos serveurs sera disponible dans une prochaine mise à jour.",
+                            text = "L’option « Engagement sur le profil public » est enregistrée sur votre compte Supabase. " +
+                                    "Les autres interrupteurs ci-dessus restent pour l’instant locaux à l’appareil.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -249,6 +293,43 @@ private fun PrivacySectionHeader(icon: ImageVector, title: String) {
         )
     }
     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+}
+
+@Composable
+private fun CulturalVisibilityChoice(
+    title: String,
+    subtitle: String,
+    selected: Boolean,
+    onSelect: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onSelect)
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RadioButton(
+            selected = selected,
+            onClick = onSelect
+        )
+        Column(
+            modifier = Modifier
+                .padding(start = 8.dp)
+                .weight(1f)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
 }
 
 @Composable

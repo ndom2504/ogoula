@@ -49,6 +49,19 @@ fun EditProfileScreen(
     var newProfileImageUri by remember { mutableStateOf<Uri?>(null) }
     var newBannerImageUri by remember { mutableStateOf<Uri?>(null) }
 
+    // Quand le ViewModel reçoit le profil (Supabase ou cache) après connexion, aligner les champs du formulaire.
+    LaunchedEffect(
+        currentProfile.userId,
+        currentProfile.firstName,
+        currentProfile.lastName,
+        currentProfile.alias,
+    ) {
+        firstName = currentProfile.firstName
+        lastName = currentProfile.lastName
+        alias = currentProfile.alias
+        aliasManuallyEdited = currentProfile.alias.isNotEmpty()
+    }
+
     // Auto-génération de l'alias depuis prénom + nom (seulement si non édité manuellement)
     LaunchedEffect(firstName, lastName) {
         if (!aliasManuallyEdited) {

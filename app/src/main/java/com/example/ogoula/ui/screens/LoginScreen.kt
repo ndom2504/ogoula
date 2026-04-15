@@ -109,6 +109,15 @@ fun LoginScreen(
                     color = MaterialTheme.colorScheme.onBackground,
                 )
 
+                if (isRegister) {
+                    Text(
+                        text = "Après la création du compte, tu déclareras ton intention, ta contribution, et tu accepteras le cadre pro-contribution Ogoula : pertinence des apports, respect de la charte (aucune injure, violence ou irrespect), contributions positives, fun et sociabilité — condition pour réussir les phases de test.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+
                 val denial = userViewModel.accountDenialMessage
                 if (denial != null) {
                     Card(

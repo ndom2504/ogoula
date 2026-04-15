@@ -60,7 +60,7 @@ class AuthRepository {
             // Sinon l'utilisateur doit confirmer son email
         } catch (e: Exception) {
             e.printStackTrace()
-            _authState.value = AuthState.Error(e.message ?: "Erreur lors de la création du compte")
+            _authState.value = AuthState.Error(userFacingAuthError(e, isSignUp = true))
         }
     }
 

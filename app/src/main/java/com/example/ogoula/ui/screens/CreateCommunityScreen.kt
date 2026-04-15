@@ -17,11 +17,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
+import com.example.ogoula.ui.components.CommunityCoverPreview
 import com.example.ogoula.ui.PostViewModel
 import com.example.ogoula.ui.theme.GreenGabo
 import kotlinx.coroutines.Dispatchers
@@ -50,7 +49,7 @@ fun CreateCommunityScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Lancer ma Communauté") },
+                title = { Text("Lancer ma communauté") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")
@@ -69,7 +68,9 @@ fun CreateCommunityScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(160.dp)
+                    .then(
+                        if (coverImageUri == null) Modifier.height(160.dp) else Modifier
+                    )
                     .clip(RoundedCornerShape(16.dp))
                     .background(Color.LightGray)
                     .clickable {
@@ -78,15 +79,13 @@ fun CreateCommunityScreen(
                 contentAlignment = Alignment.Center
             ) {
                 if (coverImageUri != null) {
-                    AsyncImage(
-                        model = coverImageUri,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
+                    CommunityCoverPreview(
+                        imageModel = coverImageUri,
+                        modifier = Modifier.fillMaxWidth(),
                     )
                     Box(
                         modifier = Modifier
-                            .fillMaxSize()
+                            .matchParentSize()
                             .background(Color.Black.copy(alpha = 0.3f)),
                         contentAlignment = Alignment.Center
                     ) {

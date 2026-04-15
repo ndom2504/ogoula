@@ -2,6 +2,7 @@ package com.example.ogoula.data
 
 import android.content.ContentResolver
 import android.net.Uri
+import android.util.Log
 import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -27,8 +28,22 @@ class StorageRepository {
     suspend fun uploadPostImage(postId: String, bytes: ByteArray): String =
         uploadAndGetUrl(postsBucket, "$postId/${System.currentTimeMillis()}.jpg", bytes, "image/jpeg")
 
-    suspend fun uploadStoryImage(storyId: String, bytes: ByteArray): String =
-        uploadAndGetUrl(postsBucket, "stories/$storyId/${System.currentTimeMillis()}.jpg", bytes, "image/jpeg")
+    /**
+     * Chemin `{userId}/stories/...` pour s’aligner sur les politiques Storage (1er segment = propriétaire).
+     */
+    suspend fun uploadStoryImage(storyId: String, bytes: ByteArray): String {
+        val uid = SupabaseIdentity.sessionUserIdOrNull()?.trim()?.lowercase()
+        if (uid.isNullOrEmpty()) {
+            Log.e("SupaStorage", "uploadStoryImage: pas de session")
+            error("Connexion requise pour envoyer l’image de la story.")
+        }
+        return uploadAndGetUrl(
+            postsBucket,
+            "$uid/stories/$storyId/${System.currentTimeMillis()}.jpg",
+            bytes,
+            "image/jpeg",
+        )
+    }
 
     suspend fun uploadPostVideo(videoId: String, bytes: ByteArray): String =
         uploadAndGetUrl(postsBucket, "videos/$videoId/${System.currentTimeMillis()}.mp4", bytes, "video/mp4")

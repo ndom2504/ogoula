@@ -7,10 +7,12 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.ogoula.data.CommunityRepository
+import com.example.ogoula.data.SupabaseIdentity
 import com.example.ogoula.data.PostRepository
 import com.example.ogoula.data.StorageRepository
 import com.example.ogoula.ui.components.Comment
 import com.example.ogoula.ui.components.Post
+import com.example.ogoula.ui.components.handlesEqual
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -38,7 +40,9 @@ data class Community(
     val name: String = "",
     val description: String = "",
     val coverImageUri: String? = null,
-    val memberCount: Int = 1
+    val memberCount: Int = 1,
+    /** Aligné sur `public.communities.user_id` (créateur). */
+    val creatorUserId: String = "",
 )
 
 class PostViewModel(application: Application) : AndroidViewModel(application) {
@@ -53,6 +57,12 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
 
     private val validatedPostIds = mutableSetOf<String>()
     private val lovedPostIds = mutableSetOf<String>()
+
+    /** Clés `postId|commentId` pour savoir si l'utilisateur courant a réagi sur un commentaire. */
+    private val validatedCommentKeys = mutableSetOf<String>()
+    private val lovedCommentKeys = mutableSetOf<String>()
+    private val commentReactionPrefs =
+        application.getSharedPreferences("ogoula_comment_reactions", Context.MODE_PRIVATE)
 
     private val _communities = mutableStateListOf<Community>()
     val communities: List<Community> get() = _communities
@@ -71,6 +81,7 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
     val unreadNotificationsCount: Int get() = _notifications.count { !it.isRead }
 
     init {
+        loadCommentReactionKeys()
         loadCommunities()
         loadFollowedUsers()
         refresh()
@@ -96,6 +107,7 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
                 obj.put("description", c.description)
                 c.coverImageUri?.let { obj.put("cover", it) }
                 obj.put("memberCount", c.memberCount)
+                if (c.creatorUserId.isNotBlank()) obj.put("creatorUserId", c.creatorUserId)
                 array.put(obj)
             }
             communityPrefs.edit().putString("communities_json", array.toString()).apply()
@@ -121,7 +133,8 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
                             name = obj.getString("name"),
                             description = obj.getString("description"),
                             coverImageUri = if (obj.has("cover")) obj.getString("cover") else null,
-                            memberCount = if (obj.has("memberCount")) obj.getInt("memberCount") else 1
+                            memberCount = if (obj.has("memberCount")) obj.getInt("memberCount") else 1,
+                            creatorUserId = if (obj.has("creatorUserId")) obj.getString("creatorUserId") else "",
                         )
                     )
                 }
@@ -143,17 +156,19 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
                     null
                 }
             }
+            val uid = SupabaseIdentity.sessionUserIdOrNull()?.trim()?.lowercase().orEmpty()
             val community = Community(
                 name = name,
                 description = description,
                 coverImageUri = coverUrl,
-                memberCount = 1
+                memberCount = 1,
+                creatorUserId = uid,
             )
             _communities.add(0, community)
             _communityNotifications.add(0, "Nouvelle communauté créée : $name")
             saveCommunities()
             try {
-                communityRepository.upsert(community)
+                communityRepository.upsert(community, uid)
                 communityPrefs.edit().putBoolean("communities_cloud_synced", true).apply()
             } catch (e: Exception) {
                 android.util.Log.e("PostViewModel", "Sync communauté Supabase", e)
@@ -182,9 +197,11 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val rawPosts = repository.getPosts()
                 _posts.value = rawPosts.map { post ->
-                    post.copy(
-                        isValidatedByMe = post.id in validatedPostIds,
-                        isLovedByMe = post.id in lovedPostIds
+                    mergeCommentReactionFlags(
+                        post.copy(
+                            isValidatedByMe = post.id in validatedPostIds,
+                            isLovedByMe = post.id in lovedPostIds
+                        )
                     )
                 }
                 refreshCommunitiesFromRemote()
@@ -194,26 +211,33 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /** Synchronise la liste avec Supabase ; migre une fois les communautés locales si la table est vide. */
+    /** Synchronise le Bled avec Supabase : uniquement les communautés créées par l’utilisateur connecté. */
     private suspend fun refreshCommunitiesFromRemote() {
         try {
-            val remote = communityRepository.getAll()
-            if (remote.isNotEmpty()) {
+            val uid = SupabaseIdentity.sessionUserIdOrNull()?.trim()?.lowercase()
+            if (uid.isNullOrEmpty()) return
+
+            val remoteMine = communityRepository.getMine(uid)
+            if (remoteMine.isNotEmpty()) {
                 _communities.clear()
-                _communities.addAll(remote)
+                _communities.addAll(remoteMine)
                 saveCommunities()
                 return
             }
             if (_communities.isNotEmpty() && !communityPrefs.getBoolean("communities_cloud_synced", false)) {
-                _communities.forEach { communityRepository.upsert(it) }
+                _communities.forEach { communityRepository.upsert(it, uid) }
                 communityPrefs.edit().putBoolean("communities_cloud_synced", true).apply()
-                val again = communityRepository.getAll()
+                val again = communityRepository.getMine(uid)
                 if (again.isNotEmpty()) {
                     _communities.clear()
                     _communities.addAll(again)
                     saveCommunities()
                 }
+                return
             }
+
+            _communities.clear()
+            saveCommunities()
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -319,21 +343,98 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun addComment(postId: String, author: String, text: String, authorImageUri: String? = null) {
+    private fun commentReactionKey(postId: String, commentId: String) = "$postId|$commentId"
+
+    private fun loadCommentReactionKeys() {
+        validatedCommentKeys.addAll(commentReactionPrefs.getStringSet("validated", emptySet()) ?: emptySet())
+        lovedCommentKeys.addAll(commentReactionPrefs.getStringSet("loved", emptySet()) ?: emptySet())
+    }
+
+    private fun saveCommentReactionKeys() {
+        commentReactionPrefs.edit()
+            .putStringSet("validated", validatedCommentKeys.toSet())
+            .putStringSet("loved", lovedCommentKeys.toSet())
+            .apply()
+    }
+
+    private fun mergeCommentReactionFlags(post: Post): Post {
+        return post.copy(
+            comments = post.comments.map { c ->
+                val key = commentReactionKey(post.id, c.id)
+                c.copy(
+                    isValidatedByMe = key in validatedCommentKeys,
+                    isLovedByMe = key in lovedCommentKeys
+                )
+            }
+        )
+    }
+
+    fun addComment(
+        postId: String,
+        author: String,
+        text: String,
+        authorImageUri: String? = null,
+        authorHandle: String = ""
+    ) {
         val post = _posts.value.find { it.id == postId } ?: return
         val newComment = Comment(
             id = UUID.randomUUID().toString(),
             author = author,
             text = text,
             time = System.currentTimeMillis(),
-            authorImageUri = authorImageUri
+            authorImageUri = authorImageUri,
+            authorHandle = authorHandle.trim()
         )
         val updatedComments = post.comments + newComment
         _posts.value = _posts.value.map {
-            if (it.id == postId) it.copy(comments = updatedComments) else it
+            if (it.id == postId) mergeCommentReactionFlags(it.copy(comments = updatedComments)) else it
         }
         viewModelScope.launch {
             repository.updateComments(postId, updatedComments)
+        }
+    }
+
+    fun toggleCommentValidate(postId: String, commentId: String, actorHandle: String) {
+        val actor = actorHandle.trim()
+        if (actor.isEmpty()) return
+        val post = _posts.value.find { it.id == postId } ?: return
+        val comment = post.comments.find { it.id == commentId } ?: return
+        if (handlesEqual(comment.authorHandle, actor)) return
+        val key = commentReactionKey(postId, commentId)
+        val was = key in validatedCommentKeys
+        if (was) validatedCommentKeys.remove(key) else validatedCommentKeys.add(key)
+        saveCommentReactionKeys()
+        val newCount = if (was) (comment.validates - 1).coerceAtLeast(0) else comment.validates + 1
+        val updatedComments = post.comments.map {
+            if (it.id == commentId) it.copy(validates = newCount, isValidatedByMe = !was) else it
+        }
+        _posts.value = _posts.value.map {
+            if (it.id == postId) mergeCommentReactionFlags(it.copy(comments = updatedComments)) else it
+        }
+        viewModelScope.launch {
+            repository.updateComments(postId, updatedComments.map { c -> c.copy(isValidatedByMe = false, isLovedByMe = false) })
+        }
+    }
+
+    fun toggleCommentLove(postId: String, commentId: String, actorHandle: String) {
+        val actor = actorHandle.trim()
+        if (actor.isEmpty()) return
+        val post = _posts.value.find { it.id == postId } ?: return
+        val comment = post.comments.find { it.id == commentId } ?: return
+        if (handlesEqual(comment.authorHandle, actor)) return
+        val key = commentReactionKey(postId, commentId)
+        val was = key in lovedCommentKeys
+        if (was) lovedCommentKeys.remove(key) else lovedCommentKeys.add(key)
+        saveCommentReactionKeys()
+        val newCount = if (was) (comment.loves - 1).coerceAtLeast(0) else comment.loves + 1
+        val updatedComments = post.comments.map {
+            if (it.id == commentId) it.copy(loves = newCount, isLovedByMe = !was) else it
+        }
+        _posts.value = _posts.value.map {
+            if (it.id == postId) mergeCommentReactionFlags(it.copy(comments = updatedComments)) else it
+        }
+        viewModelScope.launch {
+            repository.updateComments(postId, updatedComments.map { c -> c.copy(isValidatedByMe = false, isLovedByMe = false) })
         }
     }
 
@@ -366,8 +467,15 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
 
     fun getPopularityScore(userAlias: String): Int {
         var total = 0
-        _posts.value.filter { it.handle == userAlias }.forEach {
-            total += (it.validates * 10) + (it.loves * 5) + (it.comments.size * 2)
+        _posts.value.forEach { post ->
+            if (handlesEqual(post.handle, userAlias)) {
+                total += (post.validates * 10) + (post.loves * 5) + (post.comments.size * 2)
+            }
+            post.comments.forEach { c ->
+                if (c.authorHandle.isNotBlank() && handlesEqual(c.authorHandle, userAlias)) {
+                    total += (c.validates * 10) + (c.loves * 5)
+                }
+            }
         }
         return total
     }

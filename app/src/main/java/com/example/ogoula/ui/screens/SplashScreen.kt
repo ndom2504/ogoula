@@ -40,7 +40,8 @@ fun SplashScreen(onVideoFinished: () -> Unit) {
         }
     }
 
-    DisposableEffect(player) {
+    // Inclure onVideoFinished : sinon la session Auth peut être prête mais le callback reste celui du 1er frame (→ login à tort).
+    DisposableEffect(player, onVideoFinished) {
         val listener = object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
                 if (playbackState == Player.STATE_ENDED) {
@@ -59,7 +60,7 @@ fun SplashScreen(onVideoFinished: () -> Unit) {
         }
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(onVideoFinished) {
         // Sécurité : on passe à l'écran suivant après 6 secondes même si la vidéo bug
         delay(6000)
         onVideoFinished()
