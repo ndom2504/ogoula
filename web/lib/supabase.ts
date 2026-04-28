@@ -35,6 +35,12 @@ export type Post = {
   is_community_post: boolean;
   /** Présent si la table expose une colonne JSON/array de commentaires */
   comments?: unknown[] | null;
+  /** Champs produit — posts commerciaux */
+  product_url?: string | null;
+  product_title?: string | null;
+  product_price?: string | null;
+  product_image?: string | null;
+  product_video_url?: string | null;
 };
 
 /** Table `stories` — voir docs/supabase_stories.sql */

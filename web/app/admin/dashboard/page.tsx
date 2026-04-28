@@ -9,11 +9,11 @@ import {
   ChevronRight, Eye, Image as ImageIcon, Video, CheckCircle,
   XCircle, BarChart2, Bell,
   Lock as LockIcon, Ban, Settings, PauseCircle, UserRoundCheck,
-  Building2, Send, Plus, Library,
+  Building2, Send, Plus, Library, ShoppingBag,
 } from "lucide-react";
 import { OgoulaBrandMark } from "@/components/OgoulaBrandMark";
 
-type Tab = "overview" | "publish" | "communities" | "users" | "posts" | "stories" | "security" | "reports";
+type Tab = "overview" | "publish" | "communities" | "users" | "posts" | "stories" | "product_posts" | "security" | "reports";
 
 type ReportedPost = Post & { reportCount: number; reportReason: string };
 
@@ -51,6 +51,15 @@ export default function AdminDashboard() {
   >(null);
   const [modNote, setModNote] = useState("");
   const [suspendDays, setSuspendDays] = useState(7);
+
+  // Product Posts
+  const [productPosts, setProductPosts] = useState<Post[]>([]);
+  const [productUrl, setProductUrl] = useState("");
+  const [productTitle, setProductTitle] = useState("");
+  const [productPrice, setProductPrice] = useState("");
+  const [productImage, setProductImage] = useState("");
+  const [productVideoUrl, setProductVideoUrl] = useState("");
+  const [productBusy, setProductBusy] = useState(false);
 
   // Stats
   const totalUsers = profiles.length;
@@ -116,10 +125,21 @@ export default function AdminDashboard() {
       setStoriesLoadError(null);
       setStories((storiesRes.data ?? []) as StoryRow[]);
     }
+
+    // Charger les posts produits
+    const productsRes = await supabase.from("posts")
+      .select("*")
+      .not("product_url", "is", null)
+      .order("time", { ascending: false });
+    setProductPosts(productsRes.data ?? []);
+
     setLoading(false);
   }, [loadProfilesForAdmin]);
 
-  useEffect(() => { checkAuth(); loadData(); }, [checkAuth, loadData]);
+  useEffect(() => { 
+    void checkAuth();
+    void loadData();
+  }, []);
 
   useEffect(() => {
     void (async () => {
@@ -439,9 +459,67 @@ export default function AdminDashboard() {
     { id: "users", label: "Utilisateurs", icon: <Users size={18} /> },
     { id: "posts", label: "Publications", icon: <FileText size={18} /> },
     { id: "stories", label: "Stories", icon: <Library size={18} /> },
+    { id: "product_posts", label: "🛍️ Posts Produits", icon: <ShoppingBag size={18} /> },
     { id: "security", label: "Sécurité", icon: <Shield size={18} /> },
     { id: "reports", label: "Signalements", icon: <AlertTriangle size={18} /> },
   ];
+
+  async function createProductPost() {
+    if (!productTitle.trim() || !productUrl.trim()) {
+      showMsg("Titre et URL sont obligatoires");
+      return;
+    }
+    setProductBusy(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.id) {
+        showMsg("Pas d'authentification");
+        return;
+      }
+      
+      // Créer un objet simplifié pour l'insertion (colonnes de base uniquement)
+      const insertData = {
+        id: crypto.randomUUID(),
+        author: adminProfile?.first_name + " " + adminProfile?.last_name || "Admin",
+        handle: adminProfile?.alias || "@admin",
+        content: productTitle,
+        time: Date.now(),
+        validates: 0,
+        loves: 0,
+        image_urls: productImage ? [productImage] : [],
+        is_community_post: false,
+        product_url: productUrl,
+        product_title: productTitle,
+        product_price: productPrice,
+        product_image: productImage,
+        product_video_url: productVideoUrl,
+      };
+      
+      console.log("Inserting product post:", insertData);
+      const { error } = await supabase.from("posts").insert(insertData);
+      if (error) {
+        console.error("Insert error details:", error);
+        showMsg("Erreur: " + error.message);
+        return;
+      }
+      
+      showMsg("✅ Post produit créé!");
+      setProductUrl("");
+      setProductTitle("");
+      setProductPrice("");
+      setProductImage("");
+      setProductVideoUrl("");
+      
+      // Recharger les posts produits
+      const { data } = await supabase.from("posts")
+        .select("*")
+        .not("product_url", "is", null)
+        .order("time", { ascending: false });
+      setProductPosts(data ?? []);
+    } finally {
+      setProductBusy(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -1236,6 +1314,126 @@ export default function AdminDashboard() {
                   Confirmer
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── PRODUCT POSTS TAB ─────────────────────────── */}
+        {tab === "product_posts" && (
+          <div className="space-y-5">
+            <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-sm text-blue-900">
+              Crée des posts produits avec lien de redirection. Les utilisateurs verront un bouton &quot;🔗 Voir le produit&quot; dans le feed.
+            </div>
+            
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4 max-w-2xl">
+              <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                <Plus size={18} className="text-blue-500" /> Créer un post produit
+              </h3>
+              
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">
+                  URL Produit *
+                </label>
+                <input
+                  value={productUrl}
+                  onChange={(e) => setProductUrl(e.target.value)}
+                  placeholder="https://www.nike.com/..."
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">
+                  Titre du Produit *
+                </label>
+                <input
+                  value={productTitle}
+                  onChange={(e) => setProductTitle(e.target.value)}
+                  placeholder="Ex: Chaussure Air Force 1"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">
+                    Prix (optionnel)
+                  </label>
+                  <input
+                    value={productPrice}
+                    onChange={(e) => setProductPrice(e.target.value)}
+                    placeholder="120$ CAD"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">
+                    Image URL (optionnel)
+                  </label>
+                  <input
+                    value={productImage}
+                    onChange={(e) => setProductImage(e.target.value)}
+                    placeholder="https://..."
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">
+                  Vidéo Produit URL (optionnel)
+                </label>
+                <input
+                  value={productVideoUrl}
+                  onChange={(e) => setProductVideoUrl(e.target.value)}
+                  placeholder="https://youtube.com/... ou https://vimeo.com/..."
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              
+              <button
+                type="button"
+                disabled={productBusy}
+                onClick={() => void createProductPost()}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-6 py-3 text-sm font-bold text-white hover:bg-blue-600 disabled:opacity-50"
+              >
+                <Plus size={18} />
+                {productBusy ? "Création..." : "Créer le post produit"}
+              </button>
+            </div>
+            
+            <div className="space-y-3">
+              <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                📦 Posts Produits ({productPosts.length})
+              </h3>
+              {productPosts.map((p) => (
+                <div key={p.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex gap-4">
+                  {p.product_image && (
+                    <div className="w-20 h-20 rounded-lg overflow-hidden shrink-0 bg-gray-100">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={p.product_image} alt={p.product_title || "Product"} className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-900">{p.product_title}</p>
+                    {p.product_price && <p className="text-sm text-gray-600">{p.product_price}</p>}
+                    <p className="text-xs text-blue-500 truncate mt-1">{p.product_url}</p>
+                    <p className="text-xs text-gray-400 mt-2">{new Date(p.time).toLocaleString("fr-FR")}</p>
+                  </div>
+                  <button
+                    onClick={() => void deletePost(p.id)}
+                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+              {productPosts.length === 0 && (
+                <div className="text-center py-10 text-gray-400 bg-gray-50 rounded-xl border border-gray-100">
+                  Aucun post produit créé. Utilise le formulaire ci-dessus.
+                </div>
+              )}
             </div>
           </div>
         )}
