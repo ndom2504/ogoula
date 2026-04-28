@@ -139,7 +139,7 @@ export default function AdminDashboard() {
   useEffect(() => { 
     void checkAuth();
     void loadData();
-  }, []);
+  }, [checkAuth, loadData]);
 
   useEffect(() => {
     void (async () => {

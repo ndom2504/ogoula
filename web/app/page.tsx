@@ -73,7 +73,7 @@ export default function LandingPage() {
             </h1>
 
             <p className="mx-auto mt-6 max-w-3xl text-center text-sm leading-relaxed text-white/80 sm:text-base md:text-lg">
-              Ogoula est une plateforme de valorisation et d'influence où les marques, les produits et les personnalités gagnent en visibilité grâce aux interactions, aux votes et aux retours de la communauté.
+              Ogoula est une plateforme de valorisation et d&apos;influence où les marques, les produits et les personnalités gagnent en visibilité grâce aux interactions, aux votes et aux retours de la communauté.
             </p>
 
             <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
@@ -128,8 +128,8 @@ export default function LandingPage() {
             Les utilisateurs découvrent sans conviction
           </h2>
           <p className="text-white/75 text-lg leading-relaxed mb-6">
-            Aujourd'hui, les utilisateurs découvrent des produits sans savoir s'ils valent réellement le coup.
-            Les marques, elles, manquent de retours authentiques et d'engagement réel.
+            Aujourd&apos;hui, les utilisateurs découvrent des produits sans savoir s&apos;ils valent réellement le coup.
+            Les marques, elles, manquent de retours authentiques et d&apos;engagement réel.
           </p>
           <p className="text-white/75 text-lg leading-relaxed">
             Ogoula réinvente la découverte en donnant du pouvoir à la communauté —
@@ -147,15 +147,15 @@ export default function LandingPage() {
             <div>
               <p className="bg-gradient-rainbow bg-clip-text text-transparent font-bold text-sm uppercase tracking-widest mb-4">Vision</p>
               <h2 className="text-4xl md:text-5xl font-black leading-tight mb-6 text-white">
-                Une plateforme où l'opinion réelle<span className="bg-gradient-rainbow bg-clip-text text-transparent"> prime sur la publicité</span>
+                Une plateforme où l&apos;opinion réelle<span className="bg-gradient-rainbow bg-clip-text text-transparent"> prime sur la publicité</span>
               </h2>
               <p className="text-white/75 text-lg leading-relaxed mb-6">
-                Nous croyons en une plateforme où la valeur d'un produit ne dépend pas de la publicité,
-                mais de l'opinion réelle des utilisateurs.
+                Nous croyons en une plateforme où la valeur d&apos;un produit ne dépend pas de la publicité,
+                mais de l&apos;opinion réelle des utilisateurs.
               </p>
               <p className="text-white/75 text-lg leading-relaxed">
-                Ogoula est l'endroit où les produits et marques gagnent en visibilité grâce aux votes,
-                aux retours authentiques et à l'engagement de la communauté — pas via des budgets publicitaires.
+                Ogoula est l&apos;endroit où les produits et marques gagnent en visibilité grâce aux votes,
+                aux retours authentiques et à l&apos;engagement de la communauté — pas via des budgets publicitaires.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -203,7 +203,7 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto">
           <div className="mx-auto mb-16 max-w-3xl text-center">
             <p className="bg-gradient-rainbow bg-clip-text text-transparent font-bold text-sm uppercase tracking-widest mb-4">Fonctionnalités principales</p>
-            <h2 className="text-4xl md:text-5xl font-black text-white">Les vraies forces d'Ogoula</h2>
+            <h2 className="text-4xl md:text-5xl font-black text-white">Les vraies forces d&apos;Ogoula</h2>
             <p className="mt-4 text-lg leading-relaxed text-white/75">
               Des outils conçus pour valoriser authentiquement les produits et faire émerger les tendances réelles.
             </p>
@@ -257,10 +257,10 @@ export default function LandingPage() {
             Rejoignez Ogoula dès maintenant
           </h2>
           <p className="mb-6 text-lg text-white/75">
-            L'application Ogoula sera bientôt disponible sur le Play Store.
+            L&apos;application Ogoula sera bientôt disponible sur le Play Store.
             {playStoreUrl
-              ? " Tu peux l'installer tout de suite ou recevoir une alerte au lancement."
-              : " Laisse ton email pour être informé·e au lancement, ou suis le lien d'invitation si on t'a partagé ogoula.com/invite."}
+              ? " Tu peux l&apos;installer tout de suite ou recevoir une alerte au lancement."
+              : " Laisse ton email pour être informé·e au lancement, ou suis le lien d&apos;invitation si on t&apos;a partagé ogoula.com/invite."}
           </p>
           {playStoreUrl && (
             <div className="mb-8">
@@ -276,7 +276,7 @@ export default function LandingPage() {
             </div>
           )}
           <p className="mb-4 text-sm font-semibold text-white/90">
-            Tu as reçu un lien d'invitation ?{" "}
+            Tu as reçu un lien d&apos;invitation ?{" "}
             <a href="/invite" className="bg-gradient-rainbow bg-clip-text text-transparent underline underline-offset-2 hover:opacity-80">
               Page dédiée (sans email obligatoire)
             </a>
@@ -298,7 +298,7 @@ export default function LandingPage() {
               Me notifier
             </button>
           </form>
-          <p className="mt-4 text-xs text-white/50">Aucun spam — une notification au lancement. L'email reste optionnel si tu installes depuis le Play Store.</p>
+            <p className="mt-4 text-xs text-white/50">Aucun spam — une notification au lancement. L&apos;email reste optionnel si tu installes depuis le Play Store.</p>
         </div>
       </section>
 
@@ -309,7 +309,7 @@ export default function LandingPage() {
               <OgoulaBrandMark size="md" variant="color" />
               <div>
                 <p className="text-xl font-black text-white">Ogoula</p>
-                <p className="mt-1 text-sm text-white/60">Plateforme de valorisation et d'influence</p>
+                <p className="mt-1 text-sm text-white/60">Plateforme de valorisation et d&apos;influence</p>
               </div>
             </div>
             <div className="flex flex-wrap justify-center gap-4 text-sm md:gap-6">
