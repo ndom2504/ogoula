@@ -52,15 +52,33 @@ data class UserProfile(
  * (La charte peut être complétée ou relue plus tard si la base n’a pas encore les colonnes.)
  */
 private fun hasRegisteredIdentity(p: UserProfile): Boolean {
-    val result = p.firstName.isNotBlank() || p.lastName.isNotBlank() || p.alias.isNotBlank()
-    android.util.Log.d("UserViewModel", "hasRegisteredIdentity: firstName='${p.firstName}', lastName='${p.lastName}', alias='${p.alias}' → $result")
-    return result
+    if (p.firstName.isNotBlank() || p.lastName.isNotBlank() || p.alias.isNotBlank()) return true
+    // Ligne présente mais identité texte vide (migration, ancien flux) : engagement déjà renseigné.
+    val culturalDone =
+        !p.culturalReferenceCountry.isNullOrBlank() &&
+            (
+                !p.culturalIntentions.isNullOrBlank() ||
+                    !p.selfRole.isNullOrBlank() ||
+                    !p.contributionSentence.isNullOrBlank()
+                )
+    android.util.Log.d(
+        "UserViewModel",
+        "hasRegisteredIdentity: firstName='${p.firstName}', lastName='${p.lastName}', alias='${p.alias}', culturalDone=$culturalDone",
+    )
+    return culturalDone
 }
 
 /** Cadre pro-contribution enregistré (traçabilité / admin). */
 private fun hasAcceptedCharterFramework(p: UserProfile): Boolean =
     p.proContributionCharterVersion == PRO_CONTRIBUTION_CHARTER_VERSION ||
         !p.proContributionAcknowledgedAt.isNullOrBlank()
+
+/** Aligné sur handlesEqual (PostComponents) : comparaison @alias insensible à la casse. */
+private fun sameProfileAlias(a: String, b: String): Boolean {
+    if (a.isBlank() || b.isBlank()) return false
+    fun norm(s: String) = s.trim().lowercase(Locale.ROOT).removePrefix("@").let { "@$it" }
+    return norm(a) == norm(b)
+}
 
 /** Aligné sur handlesEqual : stockage stable en base et recherche par alias. */
 private fun normalizedAliasForStorage(alias: String): String {
@@ -154,21 +172,38 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun loadPublicProfileByAlias(alias: String) {
-        if (alias.isBlank()) return
+        val normalized = alias.trim().replace("\u200B", "").trim()
+        if (normalized.isBlank()) return
+        // Même compte que la session : pas besoin du SELECT distant (souvent bloqué par RLS pour « sa » ligne via alias, ou alias identique au fil).
+        if (userProfile.alias.isNotBlank() && sameProfileAlias(normalized, userProfile.alias)) {
+            publicProfileLoading = true
+            publicProfile = null
+            viewModelScope.launch {
+                publicProfile = userProfile
+                publicProfileLoading = false
+            }
+            return
+        }
         publicProfileLoading = true
         publicProfile = null
         viewModelScope.launch {
-            var row = userRepository.getProfileByAlias(alias)
-            if (row == null) {
-                val t = alias.trim()
-                val uuidRegex =
-                    Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
-                if (uuidRegex.matches(t)) {
-                    row = userRepository.getProfile(t)
+            try {
+                var row = userRepository.getProfileByAlias(normalized)
+                if (row == null) {
+                    val t = normalized
+                    val uuidRegex =
+                        Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+                    if (uuidRegex.matches(t)) {
+                        row = userRepository.getProfile(t)
+                    }
                 }
+                publicProfile = row
+            } catch (e: Exception) {
+                android.util.Log.e("UserViewModel", "loadPublicProfileByAlias", e)
+                publicProfile = null
+            } finally {
+                publicProfileLoading = false
             }
-            publicProfile = row
-            publicProfileLoading = false
         }
     }
 
@@ -226,9 +261,19 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
         val firstName = prefs.getString("profile_first_name", "") ?: ""
         val lastName = prefs.getString("profile_last_name", "") ?: ""
         val alias = prefs.getString("profile_alias", "") ?: ""
-        val result = firstName.isNotBlank() || lastName.isNotBlank() || alias.isNotBlank()
-        android.util.Log.d("UserViewModel", "🚀 hasCompletedOnboarding: firstName='$firstName', lastName='$lastName', alias='$alias' → $result")
-        return result
+        val country = prefs.getString("profile_cultural_country", "") ?: ""
+        val intentions = prefs.getString("profile_cultural_intentions", "") ?: ""
+        val role = prefs.getString("profile_self_role", "") ?: ""
+        val sentence = prefs.getString("profile_contribution_sentence", "") ?: ""
+        if (firstName.isNotBlank() || lastName.isNotBlank() || alias.isNotBlank()) return true
+        val culturalDone =
+            country.isNotBlank() &&
+                (intentions.isNotBlank() || role.isNotBlank() || sentence.isNotBlank())
+        android.util.Log.d(
+            "UserViewModel",
+            "hasCompletedOnboarding: identity=${firstName.isNotBlank() || lastName.isNotBlank() || alias.isNotBlank()} culturalDone=$culturalDone",
+        )
+        return culturalDone
     }
 
     /** Forcer hasProfile à true (contournement temporaire) */

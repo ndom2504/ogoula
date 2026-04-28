@@ -21,6 +21,7 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -45,7 +46,7 @@ import com.example.ogoula.ui.onboarding.africanCountryMenuRows
 import com.example.ogoula.ui.onboarding.culturalIntentionOptions
 import com.example.ogoula.ui.onboarding.parseIntentionsCsv
 import com.example.ogoula.ui.onboarding.selfRoleOptions
-import com.example.ogoula.ui.theme.GreenGabo
+import com.example.ogoula.ui.theme.XBlue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -94,12 +95,12 @@ fun EngagementEditBottomSheet(
                 .verticalScroll(rememberScrollState())
         ) {
             Text(
-                text = "Mon engagement",
+                text = "Mon engagement sur Ogoula",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "Modifie ton pays de référence, ton orientation, tes intentions et ta phrase. Les changements sont enregistrés sur ton profil et visibles partout dans l’app (selon tes réglages de confidentialité).",
+                text = "Sur Ogoula, tu contribues à la valorisation collective des marques, produits et personnalités. Définis ton pays de référence, ton orientation et tes motivations d'engagement. Ces informations permettent à la communauté de comprendre ta vision et tes contributions.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 8.dp, bottom = 16.dp)
@@ -128,7 +129,9 @@ fun EngagementEditBottomSheet(
                 ExposedDropdownMenu(
                     expanded = countryMenuExpanded,
                     onDismissRequest = { countryMenuExpanded = false },
-                    modifier = Modifier.heightIn(max = 360.dp)
+                    modifier = Modifier.heightIn(max = 360.dp),
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    shape = RoundedCornerShape(12.dp),
                 ) {
                     africanCountryMenuRows.forEach { row ->
                         when (row) {
@@ -142,16 +145,28 @@ fun EngagementEditBottomSheet(
                                         )
                                     },
                                     onClick = {},
-                                    enabled = false
+                                    enabled = false,
+                                    colors = MenuDefaults.itemColors(
+                                        textColor = MaterialTheme.colorScheme.primary,
+                                        disabledTextColor = MaterialTheme.colorScheme.primary,
+                                    ),
                                 )
                             }
                             is AfricanCountryMenuRow.Country -> {
                                 DropdownMenuItem(
-                                    text = { Text(row.name) },
+                                    text = {
+                                        Text(
+                                            row.name,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                        )
+                                    },
                                     onClick = {
                                         selectedCountry = row.name
                                         countryMenuExpanded = false
-                                    }
+                                    },
+                                    colors = MenuDefaults.itemColors(
+                                        textColor = MaterialTheme.colorScheme.onSurface,
+                                    ),
                                 )
                             }
                         }
@@ -161,20 +176,21 @@ fun EngagementEditBottomSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Ton orientation sur Ogoula",
+                text = "Ton rôle sur Ogoula",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "Comment tu te définis dans l’app.",
+                text = "Comment tu te définis : marque, produit, talent, influenceur ou communauté ?",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 8.dp)
             )
             Text(
-                text = "Profil / rôle",
+                text = "Ton rôle / profil",
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)
+                modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)
             )
             selfRoleOptions.forEach { opt ->
                 val selected = opt.id == roleId
@@ -186,7 +202,7 @@ fun EngagementEditBottomSheet(
                         .fillMaxWidth()
                         .padding(vertical = 2.dp),
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = GreenGabo.copy(alpha = 0.35f),
+                        selectedContainerColor = XBlue.copy(alpha = 0.22f),
                         selectedLabelColor = MaterialTheme.colorScheme.onSurface
                     )
                 )
@@ -194,9 +210,15 @@ fun EngagementEditBottomSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Intentions (1 à 2)",
+                text = "Tes motivations (1 à 2)",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "Choisis ce qui te motive le plus à contribuer et interagir sur Ogoula",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 8.dp)
             )
             culturalIntentionOptions.forEach { opt ->
                 val selected = opt.id in selectedIntentionIds
@@ -214,7 +236,7 @@ fun EngagementEditBottomSheet(
                         .fillMaxWidth()
                         .padding(vertical = 2.dp),
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = GreenGabo.copy(alpha = 0.35f),
+                        selectedContainerColor = XBlue.copy(alpha = 0.22f),
                         selectedLabelColor = MaterialTheme.colorScheme.onSurface
                     )
                 )
@@ -222,9 +244,15 @@ fun EngagementEditBottomSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Phrase d’accroche",
+                text = "Mon engagement",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "Partage comment tu vas contribuer à la valorisation sur Ogoula. Engagement : authenticité, interactions respectueuses, contenus pertinents et fun.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 8.dp)
             )
             OutlinedTextField(
                 value = contribution,
@@ -234,7 +262,7 @@ fun EngagementEditBottomSheet(
                     .padding(top = 8.dp),
                 minLines = 3,
                 maxLines = 5,
-                label = { Text("Ta phrase d’engagement") },
+                label = { Text("Ma charte d'engagement") },
                 supportingText = {
                     Text(
                         "${contributionTrimmed.length} / $CONTRIBUTION_MAX_LEN (min. $CONTRIBUTION_MIN_LEN)",
@@ -271,7 +299,7 @@ fun EngagementEditBottomSheet(
                     },
                     enabled = canSave,
                     modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = GreenGabo)
+                    colors = ButtonDefaults.buttonColors(containerColor = XBlue)
                 ) {
                     Text("Enregistrer")
                 }

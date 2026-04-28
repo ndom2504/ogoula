@@ -19,7 +19,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.ogoula.data.StorageRepository
 import com.example.ogoula.ui.components.StoryPublicationPreview
-import com.example.ogoula.ui.theme.GreenGabo
+import com.example.ogoula.ui.theme.XBlue
+import com.example.ogoula.ui.theme.XDarkGray
+import com.example.ogoula.ui.theme.XWhite
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -114,7 +116,7 @@ fun CreateStoryScreen(
                             }
                         },
                         enabled = (storyText.isNotBlank() || selectedImageUri != null) && !isSharing,
-                        colors = ButtonDefaults.buttonColors(containerColor = GreenGabo)
+                        colors = ButtonDefaults.buttonColors(containerColor = XBlue, contentColor = XWhite)
                     ) {
                         if (isSharing) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = Color.White)
@@ -135,21 +137,24 @@ fun CreateStoryScreen(
         ) {
             StoryPublicationPreview(
                 imageModel = selectedImageUri,
-                placeholderColor = if (selectedImageUri == null) GreenGabo else Color.Black,
+                placeholderColor = if (selectedImageUri == null) XDarkGray else Color.Black,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 TextField(
                     value = storyText,
                     onValueChange = { storyText = it },
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    placeholder = { Text("Tape ton texte...", color = Color.White.copy(alpha = 0.7f)) },
+                    placeholder = { Text("Partage tes ogoulas ici...", color = Color.White.copy(alpha = 0.7f)) },
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
                         unfocusedContainerColor = Color.Transparent,
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent,
+                        cursorColor = XBlue,
                         focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
+                        unfocusedTextColor = Color.White,
+                        focusedPlaceholderColor = XWhite.copy(alpha = 0.72f),
+                        unfocusedPlaceholderColor = XWhite.copy(alpha = 0.72f)
                     ),
                     textStyle = MaterialTheme.typography.headlineSmall.copy(
                         fontWeight = FontWeight.Bold,
@@ -165,7 +170,8 @@ fun CreateStoryScreen(
                     imagePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                 },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = XBlue, contentColor = XWhite)
             ) {
                 Icon(Icons.Default.AddPhotoAlternate, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))

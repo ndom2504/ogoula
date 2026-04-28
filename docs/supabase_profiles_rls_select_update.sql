@@ -35,3 +35,15 @@ create policy "profiles_update_own" on public.profiles
   );
 
 -- L’INSERT « sa ligne » est décrit dans supabase_profiles_self_insert.sql ; garde une seule politique insert cohérente.
+
+-- Répertoire : tout utilisateur connecté peut lire les lignes des autres (profil public dans l’app).
+-- Exécute aussi supabase_profiles_select_directory.sql si tu préfères un fichier dédié.
+grant usage on schema public to authenticated;
+grant select on table public.profiles to authenticated;
+
+drop policy if exists "profiles_select_directory_authenticated" on public.profiles;
+create policy "profiles_select_directory_authenticated" on public.profiles
+  as permissive
+  for select
+  to authenticated
+  using (true);

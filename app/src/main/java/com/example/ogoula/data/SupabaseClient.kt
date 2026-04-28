@@ -1,7 +1,7 @@
 package com.example.ogoula.data
 
 import android.content.Context
-import com.ogoula.app.BuildConfig
+import com.example.ogoula.BuildConfig
 import com.russhwolf.settings.Settings
 import com.russhwolf.settings.SharedPreferencesSettings
 import io.github.jan.supabase.auth.Auth

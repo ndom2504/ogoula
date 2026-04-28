@@ -40,9 +40,11 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.window.Dialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -51,16 +53,18 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.ogoula.ui.UserViewModel
+import com.example.ogoula.ui.ProfileSyncManager
+import com.example.ogoula.data.UserRepository
 import com.example.ogoula.ui.onboarding.AfricanCountryMenuRow
 import com.example.ogoula.ui.onboarding.CONTRIBUTION_MAX_LEN
 import com.example.ogoula.ui.onboarding.CONTRIBUTION_MIN_LEN
@@ -70,8 +74,9 @@ import com.example.ogoula.ui.onboarding.culturalIntentionOptions
 import com.example.ogoula.ui.onboarding.PRO_CONTRIBUTION_PRINCIPLES
 import com.example.ogoula.ui.onboarding.PRO_CONTRIBUTION_TITLE
 import com.example.ogoula.ui.onboarding.selfRoleOptions
-import com.example.ogoula.ui.theme.GreenGabo
-import com.example.ogoula.ui.theme.OgoulaSurfaceTint
+import com.example.ogoula.ui.theme.XBlack
+import com.example.ogoula.ui.theme.XBlue
+import com.example.ogoula.ui.theme.XDarkGray
 
 @Composable
 private fun FormSectionTitle(text: String) {
@@ -92,6 +97,10 @@ fun ProfileCreationScreen(
     onNavigateToMain: () -> Unit,
     onReadCharter: () -> Unit = {},
 ) {
+    val context = LocalContext.current
+    val userRepository = UserRepository()
+    val profileSyncManager = remember { ProfileSyncManager(userViewModel, userRepository, context) }
+    
     // rememberSaveable : survit au retour depuis l’écran « Charte » (évite de tout perdre).
     var firstName by rememberSaveable { mutableStateOf("") }
     var lastName by rememberSaveable { mutableStateOf("") }
@@ -155,7 +164,7 @@ fun ProfileCreationScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    CircularProgressIndicator(color = GreenGabo)
+                    CircularProgressIndicator(color = XBlue)
                     Text("Création du profil en cours...")
                 }
             }
@@ -173,7 +182,7 @@ fun ProfileCreationScreen(
                 .height(200.dp)
                 .background(
                     brush = Brush.horizontalGradient(
-                        listOf(GreenGabo, GreenGabo.copy(alpha = 0.82f), OgoulaSurfaceTint),
+                        listOf(XBlack, XBlue.copy(alpha = 0.72f), XDarkGray),
                     ),
                 )
                 .clickable {
@@ -250,7 +259,7 @@ fun ProfileCreationScreen(
 
             Card(
                 colors = CardDefaults.cardColors(
-                    containerColor = GreenGabo.copy(alpha = 0.62f),
+                    containerColor = XBlue.copy(alpha = 0.22f),
                     contentColor = Color.White,
                 ),
                 shape = RoundedCornerShape(12.dp)
@@ -293,7 +302,7 @@ fun ProfileCreationScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        Text(alias, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = GreenGabo)
+                        Text(alias, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = XBlue)
                     }
                 }
             }
@@ -324,7 +333,9 @@ fun ProfileCreationScreen(
                 ExposedDropdownMenu(
                     expanded = countryMenuExpanded,
                     onDismissRequest = { countryMenuExpanded = false },
-                    modifier = Modifier.heightIn(max = 360.dp)
+                    modifier = Modifier.heightIn(max = 360.dp),
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    shape = RoundedCornerShape(12.dp),
                 ) {
                     africanCountryMenuRows.forEach { row ->
                         when (row) {
@@ -338,16 +349,28 @@ fun ProfileCreationScreen(
                                         )
                                     },
                                     onClick = {},
-                                    enabled = false
+                                    enabled = false,
+                                    colors = MenuDefaults.itemColors(
+                                        textColor = MaterialTheme.colorScheme.primary,
+                                        disabledTextColor = MaterialTheme.colorScheme.primary,
+                                    ),
                                 )
                             }
                             is AfricanCountryMenuRow.Country -> {
                                 DropdownMenuItem(
-                                    text = { Text(row.name) },
+                                    text = {
+                                        Text(
+                                            row.name,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                        )
+                                    },
                                     onClick = {
                                         selectedCountry = row.name
                                         countryMenuExpanded = false
-                                    }
+                                    },
+                                    colors = MenuDefaults.itemColors(
+                                        textColor = MaterialTheme.colorScheme.onSurface,
+                                    ),
                                 )
                             }
                         }
@@ -384,7 +407,7 @@ fun ProfileCreationScreen(
                     },
                     modifier = Modifier.fillMaxWidth(),
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = GreenGabo.copy(alpha = 0.58f),
+                        selectedContainerColor = XBlue.copy(alpha = 0.22f),
                         selectedLabelColor = Color.White,
                         labelColor = MaterialTheme.colorScheme.onSurface,
                     )
@@ -411,15 +434,25 @@ fun ProfileCreationScreen(
                 )
                 ExposedDropdownMenu(
                     expanded = roleMenuExpanded,
-                    onDismissRequest = { roleMenuExpanded = false }
+                    onDismissRequest = { roleMenuExpanded = false },
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    shape = RoundedCornerShape(12.dp),
                 ) {
                     selfRoleOptions.forEach { opt ->
                         DropdownMenuItem(
-                            text = { Text(opt.label) },
+                            text = {
+                                Text(
+                                    opt.label,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                            },
                             onClick = {
                                 selectedRoleId = opt.id
                                 roleMenuExpanded = false
-                            }
+                            },
+                            colors = MenuDefaults.itemColors(
+                                textColor = MaterialTheme.colorScheme.onSurface,
+                            ),
                         )
                     }
                 }
@@ -477,7 +510,7 @@ fun ProfileCreationScreen(
             )
             Card(
                 colors = CardDefaults.cardColors(
-                    containerColor = GreenGabo.copy(alpha = 0.58f),
+                    containerColor = XBlue.copy(alpha = 0.22f),
                     contentColor = Color.White,
                 ),
                 shape = RoundedCornerShape(12.dp)
@@ -498,8 +531,8 @@ fun ProfileCreationScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    containerColor = XBlue,
+                    contentColor = Color.White,
                 ),
             ) {
                 Text(
@@ -568,7 +601,7 @@ fun ProfileCreationScreen(
             Button(
                 onClick = {
                     val intentionsCsv = selectedIntentionIds.joinToString(",")
-                    userViewModel.updateProfile(
+                    profileSyncManager.syncProfileComplete(
                         firstName = firstName,
                         lastName = lastName,
                         alias = alias,
@@ -579,7 +612,11 @@ fun ProfileCreationScreen(
                         selfRole = selectedRoleId,
                         contributionSentence = contributionTrimmed,
                         signProContributionCharter = true,
-                        onDone = { onNavigateToMain() }
+                        onSyncComplete = { success, error ->
+                            if (success) {
+                                onNavigateToMain()
+                            }
+                        }
                     )
                 },
                 modifier = Modifier
@@ -588,7 +625,7 @@ fun ProfileCreationScreen(
                 enabled = canSubmit,
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = GreenGabo,
+                    containerColor = XBlue,
                     contentColor = Color.White,
                 )
             ) {

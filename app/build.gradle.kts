@@ -4,6 +4,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
 }
@@ -37,7 +38,8 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.ogoula.app"
+    // Revert to com.example.ogoula to match source code precisely
+    namespace = "com.example.ogoula"
     compileSdk = 36
 
     defaultConfig {
@@ -114,6 +116,8 @@ android {
 tasks.withType<KotlinCompile>().configureEach {
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_17)
+        // Media3 (ExoPlayer, OkHttpDataSource, etc.) — évite @OptIn répétitif / incompatibilité avec androidx.annotation.OptIn
+        freeCompilerArgs.add("-opt-in=androidx.media3.common.util.UnstableApi")
     }
 }
 
@@ -164,6 +168,9 @@ dependencies {
 
     // Ktor (requis par Supabase)
     implementation(libs.ktor.client.okhttp)
+
+    // WorkManager (notifications deadline)
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
 
     // Tests
     testImplementation(libs.junit)

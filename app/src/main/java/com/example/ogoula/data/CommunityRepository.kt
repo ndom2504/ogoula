@@ -89,4 +89,28 @@ class CommunityRepository {
             e.printStackTrace()
         }
     }
+
+    suspend fun searchCommunitiesByText(rawQuery: String, limit: Int = 25): List<Community> {
+        val p = SearchQuerySanitizer.forIlike(rawQuery)
+        if (p.isEmpty()) return emptyList()
+        val pattern = "%$p%"
+        return try {
+            val byName = supabase.from("communities").select {
+                filter { ilike("name", pattern) }
+                order("created_at", order = Order.DESCENDING)
+                limit(limit.toLong())
+            }.decodeList<CommunityRow>().map { it.toCommunity() }
+            val byDesc = supabase.from("communities").select {
+                filter { ilike("description", pattern) }
+                order("created_at", order = Order.DESCENDING)
+                limit(limit.toLong())
+            }.decodeList<CommunityRow>().map { it.toCommunity() }
+            (byName + byDesc)
+                .distinctBy { it.id }
+                .take(limit)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
+        }
+    }
 }

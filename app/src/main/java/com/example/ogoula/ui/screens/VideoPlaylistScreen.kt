@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,19 +16,22 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.pager.VerticalPager
+import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.ModeComment
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.BottomSheetDefaults
@@ -36,6 +40,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -56,18 +61,20 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.example.ogoula.ui.PostViewModel
 import com.example.ogoula.ui.UserViewModel
 import com.example.ogoula.ui.components.CommentSheetContent
 import com.example.ogoula.ui.components.Post
+import com.example.ogoula.ui.components.formatRelativeTimeFr
 import com.example.ogoula.ui.components.buildExoPlayerForStoredVideo
+import com.example.ogoula.ui.components.releaseExoPlayer
 import com.example.ogoula.ui.theme.GreenGabo
 import com.example.ogoula.ui.theme.OgoulaSurfaceTint
+import com.example.ogoula.ui.theme.XBlue
+import com.example.ogoula.ui.theme.XDarkGray
 
 private fun videoUrlFromPost(p: Post): String? =
     p.videoUrl ?: p.imageUrls.find { it.startsWith("video:") }?.removePrefix("video:")
@@ -75,10 +82,11 @@ private fun videoUrlFromPost(p: Post): String? =
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun VideoPlaylistScreen(
+    /** Padding du Scaffold (TopAppBar + barre système) pour ne pas masquer la vidéo. */
+    scaffoldPadding: PaddingValues = PaddingValues(),
     initialPostId: String,
     postViewModel: PostViewModel,
     userViewModel: UserViewModel,
-    onBack: () -> Unit,
     onOpenUserProfile: (String) -> Unit,
 ) {
     val posts by postViewModel.posts.collectAsState()
@@ -98,6 +106,7 @@ fun VideoPlaylistScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(scaffoldPadding)
                 .background(Color(0xFF0D0D12)),
             contentAlignment = Alignment.Center,
         ) {
@@ -106,15 +115,6 @@ fun VideoPlaylistScreen(
                 color = Color.White.copy(alpha = 0.75f),
                 style = MaterialTheme.typography.bodyLarge,
             )
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(12.dp)
-                    .background(Color.Black.copy(alpha = 0.45f), CircleShape),
-            ) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour", tint = Color.White)
-            }
         }
         return
     }
@@ -129,16 +129,19 @@ fun VideoPlaylistScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .padding(scaffoldPadding)
             .background(
                 Brush.verticalGradient(
-                    listOf(Color(0xFF0D0D12), Color(0xFF1A1520), Color(0xFF0D3D2E)),
+                    listOf(Color(0xFF0D0D12), Color(0xFF14161B), XDarkGray),
                 ),
             ),
     ) {
-        VerticalPager(
+        HorizontalPager(
             state = pagerState,
             modifier = Modifier.fillMaxSize(),
             beyondViewportPageCount = 1,
+            pageSpacing = 8.dp,
+            contentPadding = PaddingValues(horizontal = 4.dp),
         ) { page ->
             val (post, videoUrl) = videoPages[page]
             val isActive = settledPage == page
@@ -148,6 +151,7 @@ fun VideoPlaylistScreen(
                 isActive = isActive,
                 onValidate = { postViewModel.toggleValidate(post.id) },
                 onLove = { postViewModel.toggleLove(post.id) },
+                onFavorite = { postViewModel.toggleFavorite(post.id) },
                 onShare = {
                     val sendIntent = Intent(Intent.ACTION_SEND).apply {
                         type = "text/plain"
@@ -159,31 +163,12 @@ fun VideoPlaylistScreen(
                     if (post.handle.isNotBlank()) onOpenUserProfile(post.handle)
                 },
                 onCommentClick = { commentSheetPostId = post.id },
+                onDelete = { 
+                    // TODO: Implémenter la suppression de la vidéo
+                    android.util.Log.d("Playlist", "Suppression de la vidéo: ${post.id}")
+                },
             )
         }
-
-        IconButton(
-            onClick = onBack,
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(12.dp)
-                .navigationBarsPadding()
-                .background(Color.Black.copy(alpha = 0.5f), CircleShape),
-        ) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour", tint = Color.White)
-        }
-
-        Text(
-            text = "Playlist Ogoula",
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 16.dp)
-                .navigationBarsPadding(),
-            color = Color.White.copy(alpha = 0.92f),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.2.sp,
-        )
     }
 
     commentSheetPostId?.let { pid ->
@@ -217,7 +202,6 @@ fun VideoPlaylistScreen(
     }
 }
 
-@androidx.annotation.OptIn(UnstableApi::class)
 @Composable
 private fun PlaylistVideoPage(
     post: Post,
@@ -225,12 +209,15 @@ private fun PlaylistVideoPage(
     isActive: Boolean,
     onValidate: () -> Unit,
     onLove: () -> Unit,
+    onFavorite: () -> Unit,
     onShare: () -> Unit,
     onOpenProfile: () -> Unit,
     onCommentClick: () -> Unit,
+    onDelete: () -> Unit,
 ) {
     val context = LocalContext.current
     var muted by remember { mutableStateOf(true) }
+    var showMenu by remember { mutableStateOf(false) }
 
     val player = remember(videoUrl) { buildExoPlayerForStoredVideo(context, videoUrl) }
 
@@ -249,20 +236,30 @@ private fun PlaylistVideoPage(
     }
 
     DisposableEffect(player) {
-        onDispose { player.release() }
+        onDispose { releaseExoPlayer(player) }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        AndroidView(
-            factory = { ctx ->
-                PlayerView(ctx).apply {
-                    this.player = player
-                    useController = false
-                    resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                }
-            },
-            modifier = Modifier.fillMaxSize(),
-        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 8.dp, vertical = 16.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            AndroidView(
+                factory = { ctx ->
+                    PlayerView(ctx).apply {
+                        this.player = player
+                        useController = false
+                        resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(20.dp)),
+                onRelease = { view -> view.player = null },
+            )
+        }
 
         Box(
             modifier = Modifier
@@ -285,7 +282,7 @@ private fun PlaylistVideoPage(
             PlaylistSideAction(
                 icon = if (post.isValidatedByMe) Icons.Default.ThumbUp else Icons.Outlined.ThumbUp,
                 count = post.validates,
-                tint = if (post.isValidatedByMe) GreenGabo else Color.White,
+                tint = if (post.isValidatedByMe) XBlue else Color.White,
                 onClick = onValidate,
                 label = "Je valide",
             )
@@ -295,6 +292,13 @@ private fun PlaylistVideoPage(
                 tint = if (post.isLovedByMe) Color(0xFFE91E63) else Color.White,
                 onClick = onLove,
                 label = "J’adore",
+            )
+            PlaylistSideAction(
+                icon = Icons.Default.Star,
+                count = post.favorites,
+                tint = if (post.isFavoritedByMe) Color(0xFFFFD700) else Color.White,
+                onClick = onFavorite,
+                label = "Favoris",
             )
             PlaylistSideAction(
                 icon = Icons.Default.ModeComment,
@@ -315,7 +319,7 @@ private fun PlaylistVideoPage(
                 modifier = Modifier
                     .size(48.dp)
                     .background(
-                        Brush.linearGradient(listOf(GreenGabo, OgoulaSurfaceTint)),
+                        Brush.linearGradient(listOf(XBlue, XDarkGray)),
                         CircleShape,
                     ),
             ) {
@@ -332,20 +336,59 @@ private fun PlaylistVideoPage(
                     Icon(Icons.Default.Person, contentDescription = "Profil", tint = Color.White)
                 }
             }
+            PlaylistPublicationMetaUnderAvatar(post = post)
         }
 
-        IconButton(
-            onClick = { muted = !muted },
+        Row(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(16.dp)
-                .background(Color.Black.copy(alpha = 0.45f), CircleShape),
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Icon(
-                imageVector = if (muted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
-                contentDescription = null,
-                tint = Color.White,
-            )
+            IconButton(
+                onClick = { muted = !muted },
+                modifier = Modifier.background(Color.Black.copy(alpha = 0.45f), CircleShape),
+            ) {
+                Icon(
+                    imageVector = if (muted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                    contentDescription = null,
+                    tint = Color.White,
+                )
+            }
+            
+            Box {
+                IconButton(
+                    onClick = { showMenu = !showMenu },
+                    modifier = Modifier.background(Color.Black.copy(alpha = 0.45f), CircleShape),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = "Options",
+                        tint = Color.White,
+                    )
+                }
+                
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false },
+                    modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Supprimer la vidéo") },
+                        onClick = {
+                            showMenu = false
+                            onDelete()
+                        },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Share,
+                                contentDescription = "Supprimer",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    )
+                }
+            }
         }
 
         Column(
@@ -375,6 +418,39 @@ private fun PlaylistVideoPage(
                 overflow = TextOverflow.Ellipsis,
             )
         }
+    }
+}
+
+/** Infos de la publication (type, date, compteurs) sous la bulle de profil de la playlist. */
+@Composable
+private fun PlaylistPublicationMetaUnderAvatar(post: Post) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.width(92.dp),
+    ) {
+        if (post.isCommunityPost) {
+            Surface(
+                color = XBlue.copy(alpha = 0.92f),
+                shape = RoundedCornerShape(6.dp),
+            ) {
+                Text(
+                    "COMMUNAUTÉ",
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+        }
+        Text(
+            text = formatRelativeTimeFr(post.time),
+            color = Color.White.copy(alpha = 0.85f),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Medium,
+            maxLines = 2,
+        )
     }
 }
 

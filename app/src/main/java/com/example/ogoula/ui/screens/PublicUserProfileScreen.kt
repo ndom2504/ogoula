@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,7 +15,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import com.example.ogoula.data.FollowRequestRepository
+import kotlinx.coroutines.launch
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -28,6 +36,11 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,14 +51,29 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.ogoula.ui.UserProfile
 import com.example.ogoula.ui.UserViewModel
-import com.example.ogoula.ui.components.handlesEqual
+import com.example.ogoula.ui.ProfileEngagementStats
 import com.example.ogoula.ui.onboarding.intentionLabelForId
 import com.example.ogoula.ui.onboarding.parseIntentionsCsv
 import com.example.ogoula.ui.onboarding.roleLabelForId
 import com.example.ogoula.ui.theme.GreenGabo
+import java.util.Locale
 
-private fun viewerFollowsSubject(followedHandles: List<String>, subjectAlias: String): Boolean =
-    followedHandles.any { handlesEqual(it, subjectAlias) }
+/** Même logique que UserViewModel.sameProfileAlias : @ et casse. */
+private fun normalizedAlias(s: String): String {
+    val t = s.trim().lowercase(Locale.ROOT).removePrefix("@")
+    return if (t.isEmpty()) "" else "@$t"
+}
+
+private fun handlesEqual(a: String, b: String): Boolean {
+    if (a.isBlank() || b.isBlank()) return false
+    return normalizedAlias(a) == normalizedAlias(b)
+}
+
+private fun viewerFollowsSubject(followedHandles: List<String>, subjectAlias: String): Boolean {
+    val subj = normalizedAlias(subjectAlias)
+    if (subj.isEmpty()) return false
+    return followedHandles.any { normalizedAlias(it) == subj }
+}
 
 private fun showCulturalBlock(
     subject: UserProfile,
@@ -71,6 +99,8 @@ fun PublicUserProfileScreen(
     val viewer = userViewModel.userProfile
     val loading = userViewModel.publicProfileLoading
     val profile = userViewModel.publicProfile
+    val engagementStats = remember { mutableStateOf<ProfileEngagementStats?>(null) }
+    val statsLoading = remember { mutableStateOf(false) }
 
     DisposableEffect(Unit) {
         onDispose { userViewModel.clearPublicProfile() }
@@ -78,6 +108,23 @@ fun PublicUserProfileScreen(
 
     LaunchedEffect(userHandle) {
         userViewModel.loadPublicProfileByAlias(userHandle)
+    }
+    
+    LaunchedEffect(profile) {
+        profile?.let { profileData: UserProfile -> 
+            statsLoading.value = true
+            // Charger les statistiques d'engagement
+            // TODO: Implémenter avec le ProfileSyncManager en utilisant profileData
+            android.util.Log.d("PublicUserProfile", "Chargement stats pour ${profileData.alias}")
+            statsLoading.value = false
+            engagementStats.value = ProfileEngagementStats(
+                postsCount = 0, // TODO: Récupérer depuis Supabase
+                followersCount = 0, // TODO: Récupérer depuis Supabase  
+                followingCount = 0, // TODO: Récupérer depuis Supabase
+                likesCount = 0, // TODO: Récupérer depuis Supabase
+                commentsCount = 0 // TODO: Récupérer depuis Supabase
+            )
+        }
     }
 
     Scaffold(
@@ -111,7 +158,7 @@ fun PublicUserProfileScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        "Profil introuvable ou alias incorrect.",
+                        "Profil introuvable ou accès restreint.",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -120,6 +167,14 @@ fun PublicUserProfileScreen(
             else -> {
                 val isSelf = handlesEqual(viewer.alias, profile.alias)
                 val showCultural = showCulturalBlock(profile, viewer.alias, followedHandles)
+                val displayName =
+                    "${profile.firstName} ${profile.lastName}".trim().ifBlank {
+                        profile.alias.ifBlank {
+                            if (profile.userId.isNotBlank()) "Membre Ogoula"
+                            else "Profil"
+                        }
+                    }
+                val displayHandle = profile.alias.ifBlank { userHandle }
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -162,22 +217,75 @@ fun PublicUserProfileScreen(
                                     contentScale = ContentScale.Crop
                                 )
                             } ?: Text(
-                                text = profile.firstName.take(1).uppercase() + profile.lastName.take(1).uppercase(),
+                                text = buildString {
+                                    val a = profile.firstName.take(1).uppercase()
+                                    val b = profile.lastName.take(1).uppercase()
+                                    if (a.isNotEmpty() || b.isNotEmpty()) append(a).append(b)
+                                    else append(displayHandle.removePrefix("@").take(2).uppercase(Locale.FRENCH))
+                                }.ifEmpty { "?" },
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold,
                                 style = MaterialTheme.typography.headlineSmall
                             )
                         }
                         Text(
-                            "${profile.firstName} ${profile.lastName}".trim().ifEmpty { profile.alias },
+                            displayName,
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold
                         )
-                        Text(
-                            profile.alias,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                displayHandle,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            // Bouton de suivi avec options
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                // Bouton principal de suivi
+                                IconButton(
+                                    onClick = { 
+                                        if (!isSelf) {
+                                            // Envoyer une demande de suivi
+                                            sendFollowRequest(profile, userViewModel)
+                                        }
+                                    },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PersonAdd,
+                                        contentDescription = "Suivre",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                Text(
+                                    text = "Suivre",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                
+                                // Menu d'options pour les propres publications
+                                if (viewerOwnsPost(profile.alias)) {
+                                    IconButton(
+                                        onClick = { /* TODO: Ouvrir menu options de modification */ },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.MoreVert,
+                                            contentDescription = "Options",
+                                            tint = MaterialTheme.colorScheme.onSurface,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
                         if (isSelf) {
                             Text(
                                 "C’est vous — modifiez ces infos dans « Modifier le profil » ou « Confidentialité ».",
@@ -187,6 +295,64 @@ fun PublicUserProfileScreen(
                         }
 
                         Spacer(modifier = Modifier.height(8.dp))
+
+                        // Statistiques d'engagement
+                        engagementStats.value?.let { stats ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "${stats.postsCount}",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = "Posts",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "${stats.followersCount}",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = "Abonnés",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "${stats.followingCount}",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = "Abonnements",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "${stats.likesCount}",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = "J'aime",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
 
                         if (!showCultural) {
                             Card(
@@ -259,6 +425,19 @@ fun PublicUserProfileScreen(
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
+                                    val hasEngagementDetail =
+                                        !profile.culturalReferenceCountry.isNullOrBlank() ||
+                                            parseIntentionsCsv(profile.culturalIntentions).isNotEmpty() ||
+                                            !profile.selfRole.isNullOrBlank() ||
+                                            !profile.contributionSentence.isNullOrBlank() ||
+                                            !profile.proContributionAcknowledgedAt.isNullOrBlank()
+                                    if (!hasEngagementDetail) {
+                                        Text(
+                                            "Aucun détail d’engagement renseigné pour l’instant.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -267,4 +446,34 @@ fun PublicUserProfileScreen(
             }
         }
     }
+}
+
+/**
+ * Fonction pour envoyer une demande de suivi
+ */
+private fun sendFollowRequest(profile: UserProfile, userViewModel: UserViewModel) {
+    // Cette fonction doit être appelée depuis un contexte @Composable
+    // Pour l'instant, nous allons la simplifier
+    try {
+        val currentUser = userViewModel.userProfile
+        
+        // Empêcher l'envoi à soi-même
+        if (profile.userId == currentUser.userId) {
+            return
+        }
+        
+        android.util.Log.d("FollowRequest", "Demande envoyée à ${profile.alias}")
+        // TODO: Implémenter l'envoi réel avec coroutines
+    } catch (e: Exception) {
+        android.util.Log.e("FollowRequest", "Exception envoi demande", e)
+    }
+}
+
+/**
+ * Vérifie si l'utilisateur actuel possède la publication (pour afficher les options de modification)
+ */
+private fun viewerOwnsPost(authorAlias: String): Boolean {
+    // TODO: Implémenter la logique pour vérifier si l'utilisateur actuel est l'auteur
+    // Pour l'instant, retourner false
+    return false
 }

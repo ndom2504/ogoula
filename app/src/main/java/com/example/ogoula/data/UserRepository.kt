@@ -97,12 +97,12 @@ class UserRepository {
         }.distinct()
         for (uid in candidates) {
             try {
-                val row = supabase.from("profiles")
+                val rows = supabase.from("profiles")
                     .select {
                         filter { eq("user_id", uid) }
                     }
-                    .decodeSingleOrNull<UserProfile>()
-                if (row != null) return row
+                    .decodeList<UserProfile>()
+                if (rows.isNotEmpty()) return rows.first()
             } catch (e: Exception) {
                 Log.w("UserRepository", "getProfile try user_id=$uid", e)
             }
@@ -115,7 +115,7 @@ class UserRepository {
      * Recherche par [alias] : variantes @ / sans @, casse (insensible via clés normalisées).
      */
     suspend fun getProfileByAlias(alias: String): UserProfile? {
-        val trimmed = alias.trim()
+        val trimmed = alias.trim().replace("\u200B", "").trim()
         if (trimmed.isEmpty()) return null
         val core = trimmed.removePrefix("@").lowercase(Locale.ROOT)
         val canonical = "@$core"
@@ -127,18 +127,50 @@ class UserRepository {
             add(trimmed.lowercase(Locale.ROOT))
             add(core)
         }.distinct()
+        // decodeList : évite l’échec PostgREST / kotlinx si plusieurs lignes ou JSON ambigu.
         for (v in variants) {
             try {
-                val row = supabase.from("profiles")
+                val rows = supabase.from("profiles")
                     .select {
                         filter { eq("alias", v) }
                     }
-                    .decodeSingleOrNull<UserProfile>()
-                if (row != null) return row
+                    .decodeList<UserProfile>()
+                if (rows.isNotEmpty()) return rows.first()
             } catch (e: Exception) {
                 Log.w("UserRepository", "getProfileByAlias alias=$v", e)
             }
         }
+        Log.w("UserRepository", "getProfileByAlias: aucun résultat pour alias=$alias variants=${variants.size}")
         return null
+    }
+
+    /**
+     * Recherche dans l’annuaire `profiles` (alias, prénom, nom) — nécessite une policy SELECT
+     * pour les profils des autres utilisateurs (voir [docs/supabase_profiles_select_directory.sql]).
+     */
+    suspend fun searchProfilesByText(rawQuery: String, limit: Int = 30): List<UserProfile> {
+        val p = SearchQuerySanitizer.forIlike(rawQuery)
+        if (p.isEmpty()) return emptyList()
+        val pattern = "%$p%"
+        return try {
+            val byAlias = supabase.from("profiles").select {
+                filter { ilike("alias", pattern) }
+                limit(limit.toLong())
+            }.decodeList<UserProfile>()
+            val byFirst = supabase.from("profiles").select {
+                filter { ilike("first_name", pattern) }
+                limit(limit.toLong())
+            }.decodeList<UserProfile>()
+            val byLast = supabase.from("profiles").select {
+                filter { ilike("last_name", pattern) }
+                limit(limit.toLong())
+            }.decodeList<UserProfile>()
+            (byAlias + byFirst + byLast)
+                .distinctBy { row -> row.userId.ifBlank { row.alias.lowercase(Locale.ROOT) } }
+                .take(limit)
+        } catch (e: Exception) {
+            Log.w("UserRepository", "searchProfilesByText", e)
+            emptyList()
+        }
     }
 }

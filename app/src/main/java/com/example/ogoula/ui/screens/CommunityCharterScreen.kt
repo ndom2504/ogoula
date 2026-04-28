@@ -19,8 +19,8 @@ import androidx.compose.ui.unit.dp
 import com.example.ogoula.ui.theme.GreenGabo
 
 /**
- * Charte communautaire Ogoula : valeurs culturelles, éducatives et humaines,
- * règles de publication et cadre de modération.
+ * Charte communautaire Ogoula : plateforme de valorisation et d'influence
+ * pour les marques, produits et personnalités. Règles de publication et cadre de modération.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,8 +50,9 @@ fun CommunityCharterScreen(onBack: () -> Unit) {
         ) {
             item {
                 Text(
-                    text = "Notre espace se veut d'abord culturel, éducatif et humain. " +
-                        "Chaque voix compte ; le respect et l'intégrité en sont les piliers.",
+                    text = "Ogoula est une plateforme de valorisation et d'influence où les marques, les produits " +
+                        "et les personnalités gagnent en visibilité grâce aux interactions, aux votes et aux retours de " +
+                        "la communauté. Pour réussir ensemble, nous nous engageons sur ces piliers fondamentaux.",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium
                 )
@@ -59,47 +60,47 @@ fun CommunityCharterScreen(onBack: () -> Unit) {
             item {
                 CharterCard(
                     icon = Icons.Default.Person,
-                    title = "Respect et dignité",
-                    body = "Traite les autres comme tu aimerais l'être : pas d'insultes, de harcèlement, " +
-                        "de menaces ni de contenu humiliant. Nous valorisons les échanges constructifs entre Gabonais·e·s " +
-                        "et ami·e·s du Gabon, ici et ailleurs."
+                    title = "Respect et authenticité",
+                    body = "Traite les autres avec respect : pas d'insultes, de harcèlement ni d'irrespect. " +
+                        "Les marques, produits et personnalités gagnent en crédibilité par l'authenticité et la " +
+                        "bienveillance. Chaque retour de la communauté est une opportunité d'amélioration."
                 )
             }
             item {
                 CharterCard(
                     icon = Icons.Default.School,
-                    title = "Vérité et intégrité",
-                    body = "Privilégie des informations vérifiables et honnêtes. " +
-                        "Pas de désinformation grave, pas d'incitation à la haine. " +
-                        "Les débats peuvent être vifs, mais restent dans le cadre du dialogue."
+                    title = "Transparence et honnêteté",
+                    body = "Partage des informations vérifiables et honnêtes sur tes marques, produits ou services. " +
+                        "Pas de désinformation grave ni d'arnaques. La communauté valorise la transparence et " +
+                        "sanctionne la malhonnêteté par des votes négatifs et des retours critiques."
                 )
             }
             item {
                 CharterCard(
                     icon = Icons.Default.Groups,
-                    title = "Culture et partage",
-                    body = "Ogoula célèbre nos langues, nos traditions, nos actualités et nos initiatives. " +
-                        "Partage ce qui nourrit la communauté : arts, savoir-faire, initiatives locales, " +
-                        "questions citoyennes — avec bienveillance."
+                    title = "Visibilité et valorisation",
+                    body = "Ogoula valorise les marques, produits et personnalités qui enrichissent la communauté. " +
+                        "Partage du contenu de qualité, des initiatives locales innovantes et des solutions pertinentes. " +
+                        "La communauté vote et commente pour soutenir ou améliorer ce qu'elle estime précieux."
                 )
             }
             item {
                 CharterCard(
                     icon = Icons.AutoMirrored.Filled.Feed,
-                    title = "Publications responsables",
-                    body = "Pas de contenu violent ou pornographique, pas d'exploitation de mineur·e·s, " +
-                        "pas de spam ni d'arnaques. Respecte les droits d'auteur. " +
-                        "Les contenus publicitaires excessifs ou trompeurs ne sont pas les bienvenus."
+                    title = "Contenu de qualité",
+                    body = "Pas de contenu violent, pornographique ou exploitant des mineur·e·s. " +
+                        "Pas de spam, d'arnaques ni de publicités trompeuses. Les contenus doivent être pertinents, " +
+                        "professionnels et respectueux. Crédite les sources et respecte les droits d'auteur."
                 )
             }
             item {
                 CharterCard(
                     icon = Icons.Default.Shield,
-                    title = "Modération et sanctions",
+                    title = "Justice et modération",
                     body = "En cas de non-respect de cette charte, l'équipe peut retirer un contenu, " +
-                        "suspendre temporairement un compte ou exclure un compte en dernier recours, " +
-                        "avec un souci d'équité. Tu peux contacter le support pour faire appel " +
-                        "(info@misterdil.ca) en expliquant ta situation."
+                        "suspendre temporairement un compte ou exclure un compte en dernier recours. " +
+                        "Les votes négatifs et les retours critiques de la communauté jouent aussi un rôle de régulation. " +
+                        "Contacter info@misterdil.ca pour contester une modération."
                 )
             }
             item {
@@ -108,8 +109,10 @@ fun CommunityCharterScreen(onBack: () -> Unit) {
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Text(
-                        text = "En utilisant Ogoula, tu acceptes cette charte. Merci de faire vivre un espace " +
-                            "où chacun·e peut s'exprimer avec dignité.",
+                        text = "En utilisant Ogoula, tu acceptes cette charte et t'engages à contribuer à une " +
+                            "communauté où les marques, produits et personnalités prospèrent grâce à des interactions " +
+                            "authentiques, respectueuses et constructives. Merci de faire vivre cet espace d'influence " +
+                            "et de valorisation.",
                         modifier = Modifier.padding(16.dp),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface

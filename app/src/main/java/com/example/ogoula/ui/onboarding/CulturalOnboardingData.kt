@@ -79,29 +79,29 @@ val africanCountryMenuRows: List<AfricanCountryMenuRow> = buildList {
 data class CulturalIntentionOption(val id: String, val label: String)
 
 val culturalIntentionOptions: List<CulturalIntentionOption> = listOf(
-    CulturalIntentionOption("promote_culture", "Promouvoir la culture locale"),
-    CulturalIntentionOption("share_traditions", "Partager traditions, langues et savoirs"),
-    CulturalIntentionOption("music_art_fashion", "Mettre en valeur musique, art et mode"),
-    CulturalIntentionOption("educate_history", "Éduquer / vulgariser l’histoire et le patrimoine"),
-    CulturalIntentionOption("bridges_diaspora", "Créer des ponts entre ici et la diaspora"),
-    CulturalIntentionOption("local_initiatives", "Valoriser initiatives locales / entrepreneurs"),
-    CulturalIntentionOption("youth_transmission", "Transmettre aux jeunes générations"),
-    CulturalIntentionOption("fair_image", "Défendre une image juste et équilibrée"),
-    CulturalIntentionOption("network_cultural", "Réseauter avec des acteurs culturels locaux"),
-    CulturalIntentionOption("create_content", "Créer du contenu en une ligne"),
+    CulturalIntentionOption("gain_visibility", "Gagner en visibilité"),
+    CulturalIntentionOption("build_influence", "Construire mon influence"),
+    CulturalIntentionOption("community_feedback", "Recevoir des retours de la communauté"),
+    CulturalIntentionOption("support_brands", "Soutenir marques et produits locaux"),
+    CulturalIntentionOption("network_brands", "Réseauter avec d'autres marques"),
+    CulturalIntentionOption("talent_promotion", "Valoriser les talents"),
+    CulturalIntentionOption("quality_products", "Promouvoir produits de qualité"),
+    CulturalIntentionOption("authentic_interactions", "Créer des interactions authentiques"),
+    CulturalIntentionOption("competitive_votes", "Participer aux votes et comparaisons"),
+    CulturalIntentionOption("share_expertise", "Partager mon expertise et passion"),
 )
 
 data class SelfRoleOption(val id: String, val label: String)
 
 val selfRoleOptions: List<SelfRoleOption> = listOf(
-    SelfRoleOption("content_creator", "Créateur de contenu"),
-    SelfRoleOption("political_leader", "Leader politique"),
-    SelfRoleOption("artist_artisan", "Artiste / Artisan"),
-    SelfRoleOption("teacher_researcher", "Enseignant / Chercheur"),
-    SelfRoleOption("student", "Étudiant"),
-    SelfRoleOption("entrepreneur", "Entrepreneur / Porteur de projet"),
-    SelfRoleOption("community_leader", "Leader communautaire"),
-    SelfRoleOption("curious_learner", "Curieux / Apprenant"),
+    SelfRoleOption("brand", "Marque"),
+    SelfRoleOption("product", "Produit"),
+    SelfRoleOption("talent", "Talent"),
+    SelfRoleOption("influencer", "Influenceur"),
+    SelfRoleOption("community", "Communauté"),
+    SelfRoleOption("creative", "Créatif"),
+    SelfRoleOption("entrepreneur", "Entrepreneur"),
+    SelfRoleOption("fan_advocate", "Fan / Ambassadeur"),
     SelfRoleOption("other", "Autre"),
 )
 

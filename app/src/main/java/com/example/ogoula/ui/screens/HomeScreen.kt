@@ -27,6 +27,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ThumbUp
@@ -41,12 +42,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -56,6 +59,12 @@ import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.example.ogoula.ui.theme.GreenGabo
 import com.example.ogoula.ui.theme.OgoulaSurfaceTint
+import com.example.ogoula.ui.theme.XBlack
+import com.example.ogoula.ui.theme.XBlue
+import com.example.ogoula.ui.theme.XBorderGray
+import com.example.ogoula.ui.theme.XDarkGray
+import com.example.ogoula.ui.theme.XTextGray
+import com.example.ogoula.ui.theme.XWhite
 import com.example.ogoula.ui.components.PostItem
 import com.example.ogoula.ui.components.handlesEqual
 import com.example.ogoula.ui.PostViewModel
@@ -63,8 +72,8 @@ import com.example.ogoula.ui.StoryViewModel
 import com.example.ogoula.ui.Story
 import com.example.ogoula.ui.UserProfile
 import com.example.ogoula.ui.UserViewModel
+import com.example.ogoula.ui.VideoVolumeViewModel
 import kotlinx.coroutines.delay
-import kotlin.math.abs
 
 @Composable
 fun HomeScreen(
@@ -76,8 +85,11 @@ fun HomeScreen(
     onAddStoryClick: () -> Unit,
     onOpenUserProfile: (String) -> Unit = {},
     onOpenVideoPlaylist: (String) -> Unit = {},
+    videoVolumeViewModel: VideoVolumeViewModel? = null,
+    onOpenPromiseTracker: () -> Unit = {},
 ) {
     val posts by postViewModel.posts.collectAsState()
+    val pollVotes by postViewModel.pollVotes.collectAsState()
     val stories = storyViewModel.stories
     val profile = userViewModel.userProfile
     val context = LocalContext.current
@@ -93,19 +105,20 @@ fun HomeScreen(
         }
     }
 
-    val feedMaxCap = 900.dp
+    val feedMaxCap = 600.dp
     val listState = rememberLazyListState()
-    val centerFocusedLazyIndex by remember {
-        derivedStateOf {
-            val layoutInfo = listState.layoutInfo
-            val visible = layoutInfo.visibleItemsInfo
-            if (visible.isEmpty()) return@derivedStateOf -1
-            val viewportCenter = (layoutInfo.viewportStartOffset + layoutInfo.viewportEndOffset) / 2
-            visible.minByOrNull { item ->
-                val itemCenter = item.offset + item.size / 2
-                abs(itemCenter - viewportCenter)
-            }?.index ?: -1
-        }
+    
+    // Load more posts when scrolling near the end
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
+            .collect { lastVisibleIndex ->
+                if (lastVisibleIndex != null && posts.isNotEmpty()) {
+                    val totalItems = posts.size
+                    if (lastVisibleIndex >= totalItems - 5) { // Load when 5 items from end
+                        postViewModel.loadMorePosts()
+                    }
+                }
+            }
     }
 
     BoxWithConstraints(
@@ -122,6 +135,7 @@ fun HomeScreen(
                 .fillMaxHeight()
                 .widthIn(max = feedMaxWidth)
                 .fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
         ) {
             item {
                 StoryBar(
@@ -142,19 +156,14 @@ fun HomeScreen(
                     )
                 } else post
 
-                val lazyItemIndex = postIndex + 2
-                val videoUrlFinal = displayPost.videoUrl
-                    ?: displayPost.imageUrls.find { it.startsWith("video:") }?.removePrefix("video:")
-                val hasVideo = !videoUrlFinal.isNullOrBlank()
-                val feedVideoActive = hasVideo && centerFocusedLazyIndex == lazyItemIndex
+                val hasVideo = (displayPost.videoUrl
+                    ?: displayPost.imageUrls.find { it.startsWith("video:") }) != null
 
                 PostItem(
                     post = displayPost,
                     isFollowed = postViewModel.followedUsers.contains(post.handle),
                     showFollowButton = !handlesEqual(post.handle, profile.alias),
                     currentUserHandle = profile.alias,
-                    useFeedVideoAutoplay = hasVideo,
-                    feedVideoActive = feedVideoActive,
                     onValidate = { postViewModel.toggleValidate(post.id) },
                     onLove = { postViewModel.toggleLove(post.id) },
                     onCommentAdded = { text ->
@@ -192,6 +201,8 @@ fun HomeScreen(
                     } else {
                         null
                     },
+                    myPollVoteIndex = pollVotes[displayPost.id],
+                    onPollVote = { idx -> postViewModel.voteOnPoll(displayPost.id, idx) },
                 )
             }
         }
@@ -363,13 +374,28 @@ fun StoryBar(
     onAddStoryClick: () -> Unit,
     onStoryClick: (Story) -> Unit,
 ) {
-    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(XBlack)
+            .drawWithContent {
+                drawContent()
+                // Bordure subtile style X en bas
+                drawLine(
+                    color = XBorderGray,
+                    start = androidx.compose.ui.geometry.Offset(0f, size.height),
+                    end = androidx.compose.ui.geometry.Offset(size.width, size.height),
+                    strokeWidth = 0.5.dp.toPx()
+                )
+            }
+            .padding(vertical = 8.dp)
+    ) {
         Text(
             text = "Au Quartier",
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
+            color = XWhite,
         )
         LazyRow(
             contentPadding = PaddingValues(horizontal = 16.dp),
@@ -389,16 +415,16 @@ fun StoryBar(
 fun AddStoryCard(onClick: () -> Unit) {
     Card(
         modifier = Modifier
-            .size(width = 100.dp, height = 160.dp)
+            .size(width = 96.dp, height = 156.dp)
             .clickable { onClick() },
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = XDarkGray)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.LightGray)
+                    .background(XDarkGray)
             )
             Column(
                 modifier = Modifier.fillMaxSize(),
@@ -407,19 +433,20 @@ fun AddStoryCard(onClick: () -> Unit) {
             ) {
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
+                        .size(34.dp)
                         .clip(CircleShape)
-                        .background(GreenGabo)
-                        .border(2.dp, Color.White, CircleShape),
+                        .background(XBlue.copy(alpha = 0.18f))
+                        .border(1.dp, XBlue, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Outlined.Add, contentDescription = null, tint = XBlue, modifier = Modifier.size(18.dp))
                 }
                 Text(
                     "Ajouter",
                     style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.padding(bottom = 8.dp, top = 4.dp),
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = XWhite
                 )
             }
         }
@@ -430,16 +457,15 @@ fun AddStoryCard(onClick: () -> Unit) {
 fun StoryCard(story: Story, onClick: () -> Unit) {
     Card(
         modifier = Modifier
-            .size(width = 100.dp, height = 160.dp)
+            .size(width = 96.dp, height = 156.dp)
             .clickable { onClick() }
             .border(
-                width = 2.dp,
-                brush = Brush.verticalGradient(
-                    listOf(GreenGabo, GreenGabo.copy(alpha = 0.75f), OgoulaSurfaceTint),
-                ),
-                shape = RoundedCornerShape(12.dp)
+                width = 1.dp,
+                color = XBorderGray,
+                shape = RoundedCornerShape(16.dp)
             ),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = XDarkGray)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             if (story.contentImageUrl != null) {
@@ -471,8 +497,8 @@ fun StoryCard(story: Story, onClick: () -> Unit) {
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .padding(8.dp)
-                    .background(Color.Black.copy(alpha = 0.3f), CircleShape)
-                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                    .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(999.dp))
+                    .padding(horizontal = 8.dp, vertical = 3.dp)
             ) {
                 Text(
                     text = story.author,
@@ -486,7 +512,7 @@ fun StoryCard(story: Story, onClick: () -> Unit) {
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(6.dp)
-                        .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(6.dp))
+                        .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(999.dp))
                         .padding(horizontal = 4.dp, vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -517,7 +543,7 @@ fun AwasInputBar(profileImageUri: String?, onClick: () -> Unit) {
             .padding(16.dp)
             .clickable { onClick() },
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        colors = CardDefaults.cardColors(containerColor = XDarkGray)
     ) {
         Row(
             modifier = Modifier
@@ -528,7 +554,7 @@ fun AwasInputBar(profileImageUri: String?, onClick: () -> Unit) {
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
-                    .background(GreenGabo),
+                    .background(XBlue),
                 contentAlignment = Alignment.Center
             ) {
                 if (profileImageUri != null) {
@@ -543,9 +569,43 @@ fun AwasInputBar(profileImageUri: String?, onClick: () -> Unit) {
             Spacer(modifier = Modifier.width(12.dp))
             Text(
                 text = "Quoi de neuf au pays ?",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = XTextGray,
                 style = MaterialTheme.typography.bodyMedium
             )
+        }
+    }
+}
+
+@Composable
+private fun PromiseTrackerBanner(onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .clickable { onClick() },
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = XDarkGray),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text("🗳️", style = MaterialTheme.typography.headlineMedium)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Tracker de Promesses",
+                    fontWeight = FontWeight.Bold,
+                    color = XWhite,
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Text(
+                    "Tenus ou brisés — les citoyens jugent leurs leaders",
+                    color = XTextGray,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            Text("→", color = XBlue, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         }
     }
 }

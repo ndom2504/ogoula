@@ -18,6 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -27,6 +28,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
 import com.example.ogoula.ui.UserViewModel
+import com.example.ogoula.ui.PostViewModel
+import com.example.ogoula.ui.ProfileSyncManager
+import com.example.ogoula.data.UserRepository
 import com.example.ogoula.ui.theme.GreenGabo
 import com.example.ogoula.ui.theme.OgoulaSurfaceTint
 
@@ -34,9 +38,14 @@ import com.example.ogoula.ui.theme.OgoulaSurfaceTint
 @Composable
 fun EditProfileScreen(
     userViewModel: UserViewModel,
+    postViewModel: PostViewModel,
     onBack: () -> Unit,
     onSave: () -> Unit
 ) {
+    val context = LocalContext.current
+    val userRepository = UserRepository()
+    val profileSyncManager = remember { ProfileSyncManager(userViewModel, userRepository, context, postViewModel) }
+    
     val currentProfile = userViewModel.userProfile
     val isUploading = userViewModel.isUploading
     val uploadError = userViewModel.uploadError
@@ -121,10 +130,25 @@ fun EditProfileScreen(
                 actions = {
                     IconButton(
                         onClick = {
+                            // Mettre à jour le profil localement d'abord
                             userViewModel.updateProfile(
-                                firstName, lastName, alias,
-                                newProfileImageUri, newBannerImageUri,
-                                onDone = { onSave() }
+                                firstName = firstName,
+                                lastName = lastName,
+                                alias = alias,
+                                profileUri = newProfileImageUri,
+                                bannerUri = newBannerImageUri
+                            )
+                            
+                            // Puis synchroniser automatiquement toute l'application
+                            profileSyncManager.syncProfileAutomatic(
+                                onSyncComplete = { success, error ->
+                                    if (success) {
+                                        onSave()
+                                    } else {
+                                        // En cas d'erreur, afficher un message
+                                        android.util.Log.e("EditProfile", "Erreur sync auto: $error")
+                                    }
+                                }
                             )
                         },
                         enabled = !isUploading
@@ -230,18 +254,41 @@ fun EditProfileScreen(
                     shape = RoundedCornerShape(12.dp)
                 )
 
-                OutlinedTextField(
-                    value = alias,
-                    onValueChange = {
-                        alias = it
-                        aliasManuallyEdited = true
-                    },
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Alias (auto-généré ou personnalisé)") },
-                    placeholder = { Text("@votre_alias") },
-                    shape = RoundedCornerShape(12.dp),
-                    supportingText = { Text("Généré automatiquement depuis prénom + nom", style = MaterialTheme.typography.labelSmall) }
-                )
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = alias,
+                        onValueChange = {
+                            alias = it
+                            aliasManuallyEdited = true
+                        },
+                        modifier = Modifier.weight(1f),
+                        label = { Text("Alias") },
+                        placeholder = { Text("@votre_alias") },
+                        shape = RoundedCornerShape(12.dp),
+                        supportingText = { Text("Généré automatiquement depuis prénom + nom", style = MaterialTheme.typography.labelSmall) }
+                    )
+                    
+                    Button(
+                        onClick = {
+                            // Générer un alias automatiquement avec le nouveau système
+                            val firstName = firstName
+                            val lastName = lastName
+                            val generatedAlias = "${firstName.take(2).uppercase()}${lastName.take(2).uppercase()}${System.currentTimeMillis() % 10000}"
+                            alias = "@$generatedAlias"
+                            aliasManuallyEdited = false
+                        },
+                        modifier = Modifier
+                            .height(OutlinedTextFieldDefaults.MinHeight)
+                            .defaultMinSize(minWidth = 80.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = GreenGabo)
+                    ) {
+                        Text("Générer", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
             }
         }
     }

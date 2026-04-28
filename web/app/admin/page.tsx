@@ -66,7 +66,12 @@ export default function AdminLoginPage() {
             <OgoulaBrandMark size="lg" variant="white" />
             <span className="text-3xl font-black text-white">Ogoula</span>
           </div>
-          <p className="text-sm text-white/70">Portail administrateur</p>
+          <p className="text-sm text-white/90 font-medium">
+            Plateforme de valorisation et d&apos;influence
+          </p>
+          <p className="text-xs text-white/60 mt-2 max-w-sm mx-auto">
+            Où les marques, produits et personnalités gagnent en visibilité grâce aux interactions et aux votes de la communauté
+          </p>
         </div>
 
         {/* Card */}

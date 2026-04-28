@@ -28,7 +28,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.ogoula.ui.PostViewModel
-import com.example.ogoula.ui.theme.GreenGabo
+import com.example.ogoula.ui.theme.XBlue
+import com.example.ogoula.ui.theme.XDarkGray
 
 private fun inviteTextForKongossa(inviteeQuery: String): String {
     val who = inviteeQuery.trim().ifBlank { "toi" }
@@ -107,13 +108,13 @@ fun KongossaScreen(
                         Box(
                             modifier = Modifier
                                 .size(88.dp)
-                                .background(GreenGabo.copy(alpha = 0.1f), CircleShape),
+                                .background(XBlue.copy(alpha = 0.12f), CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.Chat,
                                 contentDescription = null,
-                                tint = GreenGabo,
+                                tint = XBlue,
                                 modifier = Modifier.size(44.dp)
                             )
                         }
@@ -153,7 +154,7 @@ fun KongossaScreen(
                         text = "Contacts — fais défiler",
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
-                        color = GreenGabo,
+                        color = XBlue,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                     )
                     LazyRow(
@@ -192,7 +193,7 @@ fun KongossaScreen(
                     text = "Abonnements · ${contacts.size}",
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
-                    color = GreenGabo,
+                    color = XBlue,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
 
@@ -202,7 +203,7 @@ fun KongossaScreen(
                             name = user.name,
                             handle = user.handle,
                             imageUri = user.imageUri,
-                            lastMessage = "Tape pour ouvrir la conversation",
+                            lastMessage = "",
                             isOnline = false,
                             unreadCount = 0,
                             onClick = { onChatClick(user.name) }
@@ -227,7 +228,7 @@ private fun KongossaInviteCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = GreenGabo.copy(alpha = 0.08f))
+        colors = CardDefaults.cardColors(containerColor = XDarkGray)
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -273,7 +274,7 @@ private fun KongossaContactCarouselItem(
             modifier = Modifier
                 .size(60.dp)
                 .clip(CircleShape)
-                .background(GreenGabo.copy(alpha = 0.88f)),
+                .background(XBlue.copy(alpha = 0.18f)),
             contentAlignment = Alignment.Center
         ) {
             if (imageUri != null) {
@@ -342,7 +343,7 @@ fun KongossaContactItem(
         trailingContent = {
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (unreadCount > 0) {
-                    Badge(containerColor = GreenGabo) {
+                    Badge(containerColor = XBlue) {
                         Text("$unreadCount", color = Color.White)
                     }
                 }
@@ -354,7 +355,7 @@ fun KongossaContactItem(
                     modifier = Modifier
                         .fillMaxSize()
                         .clip(CircleShape)
-                        .background(GreenGabo.copy(alpha = 0.88f)),
+                        .background(XBlue.copy(alpha = 0.18f)),
                     contentAlignment = Alignment.Center
                 ) {
                     if (imageUri != null) {

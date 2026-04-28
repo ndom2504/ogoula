@@ -3,6 +3,8 @@ package com.example.ogoula.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Person
@@ -11,11 +13,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ogoula.ui.UserProfile
 import com.example.ogoula.ui.UserViewModel
+import com.example.ogoula.ui.PostViewModel
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -30,6 +34,7 @@ fun AdminScreen(
     var profiles by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var selectedTab by remember { mutableStateOf(0) } // 0: Users, 1: Product Posts
 
     // Vérifier si l'utilisateur courant est admin
     val currentUser = userViewModel.userProfile
@@ -96,45 +101,72 @@ fun AdminScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp)
         ) {
-            if (loading) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-            } else if (error != null) {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        Text(
-                            "Erreur",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(error ?: "")
-                    }
-                }
-            } else {
-                Text(
-                    "Gestion des comptes utilisateurs",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 16.dp)
+            // Tabs
+            TabRow(selectedTabIndex = selectedTab) {
+                Tab(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    text = { Text("Utilisateurs") }
                 )
-
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(profiles) { profile ->
-                        UserProfileCard(profile = profile)
-                    }
+                Tab(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    text = { Text("Posts Produits") }
+                )
+            }
+            
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+            ) {
+                when (selectedTab) {
+                    0 -> UsersTab(loading, error, profiles)
+                    1 -> ProductPostsTab()
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun UsersTab(loading: Boolean, error: String?, profiles: List<UserProfile>) {
+    if (loading) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+    } else if (error != null) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Text(
+                    "Erreur",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(error ?: "")
+            }
+        }
+    } else {
+        Text(
+            "Gestion des comptes utilisateurs",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(profiles) { profile ->
+                UserProfileCard(profile = profile)
             }
         }
     }
@@ -246,6 +278,135 @@ private fun UserProfileCard(profile: UserProfile) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 // TODO: Ajouter boutons d'action (suspendre, bannir, réactiver)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProductPostsTab() {
+    var productUrl by remember { mutableStateOf("") }
+    var productTitle by remember { mutableStateOf("") }
+    var productPrice by remember { mutableStateOf("") }
+    var productImage by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
+    var successMessage by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf("") }
+    val postViewModel: PostViewModel = viewModel()
+    
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(androidx.compose.foundation.rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(
+            "Créer un Post Produit",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold
+        )
+        
+        // URL du produit
+        OutlinedTextField(
+            value = productUrl,
+            onValueChange = { productUrl = it },
+            label = { Text("URL du produit") },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("https://www.nike.com/ca/fr/...") },
+            singleLine = true
+        )
+        
+        // Titre du produit
+        OutlinedTextField(
+            value = productTitle,
+            onValueChange = { productTitle = it },
+            label = { Text("Titre du produit") },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("Ex: Chaussure Air Force 1") },
+            singleLine = true
+        )
+        
+        // Prix du produit
+        OutlinedTextField(
+            value = productPrice,
+            onValueChange = { productPrice = it },
+            label = { Text("Prix") },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("Ex: 120$ CAD") },
+            singleLine = true
+        )
+        
+        // Image URL
+        OutlinedTextField(
+            value = productImage,
+            onValueChange = { productImage = it },
+            label = { Text("URL de l'image du produit") },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("https://...") }
+        )
+        
+        // Messages
+        if (successMessage.isNotEmpty()) {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF4CAF50).copy(alpha = 0.2f))
+            ) {
+                Text(
+                    successMessage,
+                    modifier = Modifier.padding(12.dp),
+                    color = Color(0xFF4CAF50),
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+        
+        if (errorMessage.isNotEmpty()) {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+            ) {
+                Text(
+                    errorMessage,
+                    modifier = Modifier.padding(12.dp),
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+        
+        // Bouton de création
+        Button(
+            onClick = {
+                if (productUrl.isBlank() || productTitle.isBlank()) {
+                    errorMessage = "Veuillez remplir l'URL et le titre du produit"
+                    return@Button
+                }
+                isLoading = true
+                errorMessage = ""
+                successMessage = ""
+                
+                // Créer le post produit via le ViewModel
+                postViewModel.createProductPost(
+                    productUrl = productUrl,
+                    productTitle = productTitle,
+                    productPrice = productPrice,
+                    productImage = productImage
+                )
+                
+                isLoading = false
+                successMessage = "Post produit créé avec succès!"
+                productUrl = ""
+                productTitle = ""
+                productPrice = ""
+                productImage = ""
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            enabled = !isLoading
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+            } else {
+                Text("Créer le post produit")
             }
         }
     }

@@ -13,14 +13,20 @@ import com.example.ogoula.data.StorageRepository
 import com.example.ogoula.ui.components.Comment
 import com.example.ogoula.ui.components.Post
 import com.example.ogoula.ui.components.handlesEqual
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.workDataOf
+import com.example.ogoula.workers.DeadlineNotificationWorker
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.UUID
+import java.util.concurrent.TimeUnit
+import kotlinx.serialization.Serializable
 import org.json.JSONArray
 import org.json.JSONObject
-import java.util.UUID
 
 data class Notification(
     val id: Int,
@@ -31,6 +37,7 @@ data class Notification(
     var isRead: Boolean = false
 )
 
+@Serializable
 enum class NotificationType {
     POST, KONGOSSA, COMMUNITY, SYSTEM
 }
@@ -54,9 +61,16 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _posts = MutableStateFlow<List<Post>>(emptyList())
     val posts: StateFlow<List<Post>> = _posts.asStateFlow()
+    
+    // Pagination support
+    private var currentOffset = 0
+    private val pageSize = 20
+    private var hasMorePosts = true
+    private var isLoadingMore = false
 
     private val validatedPostIds = mutableSetOf<String>()
     private val lovedPostIds = mutableSetOf<String>()
+    private val favoritedPostIds = mutableSetOf<String>()
 
     /** Clés `postId|commentId` pour savoir si l'utilisateur courant a réagi sur un commentaire. */
     private val validatedCommentKeys = mutableSetOf<String>()
@@ -193,9 +207,11 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
     // ──────────────────────────────────────────────
 
     fun refresh() {
+        currentOffset = 0
+        hasMorePosts = true
         viewModelScope.launch {
             try {
-                val rawPosts = repository.getPosts()
+                val rawPosts = repository.getPosts(limit = pageSize, offset = 0)
                 _posts.value = rawPosts.map { post ->
                     mergeCommentReactionFlags(
                         post.copy(
@@ -204,9 +220,40 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
                         )
                     )
                 }
+                currentOffset = pageSize
+                hasMorePosts = rawPosts.size == pageSize
                 refreshCommunitiesFromRemote()
             } catch (e: Exception) {
                 e.printStackTrace()
+            }
+        }
+    }
+
+    fun loadMorePosts() {
+        if (isLoadingMore || !hasMorePosts) return
+        isLoadingMore = true
+        viewModelScope.launch {
+            try {
+                val newPosts = repository.getPosts(limit = pageSize, offset = currentOffset)
+                if (newPosts.isNotEmpty()) {
+                    val processedPosts = newPosts.map { post ->
+                        mergeCommentReactionFlags(
+                            post.copy(
+                                isValidatedByMe = post.id in validatedPostIds,
+                                isLovedByMe = post.id in lovedPostIds
+                            )
+                        )
+                    }
+                    _posts.value = _posts.value + processedPosts
+                    currentOffset += pageSize
+                    hasMorePosts = newPosts.size == pageSize
+                } else {
+                    hasMorePosts = false
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                isLoadingMore = false
             }
         }
     }
@@ -243,6 +290,26 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // ── État votes sondages et pétitions ──────────────────────────────────────
+    private val _pollVotes = MutableStateFlow<Map<String, Int>>(emptyMap()) // postId → optionIndex
+    val pollVotes: StateFlow<Map<String, Int>> = _pollVotes.asStateFlow()
+
+    fun voteOnPoll(postId: String, optionIndex: Int) {
+        viewModelScope.launch {
+            val userId = SupabaseIdentity.sessionUserIdOrNull() ?: return@launch
+            if (_pollVotes.value.containsKey(postId)) return@launch // un seul vote
+            _pollVotes.value = _pollVotes.value + (postId to optionIndex)
+            _posts.value = _posts.value.map { p ->
+                if (p.id != postId) return@map p
+                val counts = p.pollVoteCounts.toMutableList()
+                while (counts.size < p.pollOptions.size) counts.add(0)
+                if (optionIndex < counts.size) counts[optionIndex]++
+                p.copy(pollVoteCounts = counts)
+            }
+            repository.castPollVote(postId, userId, optionIndex)
+        }
+    }
+
     fun addPost(
         content: String,
         author: String = "Moi",
@@ -250,7 +317,12 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         authorImageUri: String? = null,
         imageBytes: List<ByteArray> = emptyList(),
         videoBytes: ByteArray? = null,
-        videoUri: Uri? = null          // ← upload direct depuis URI (évite OOM)
+        videoUri: Uri? = null,          // ← upload direct depuis URI (évite OOM)
+        postType: String = "classique",
+        pollOptions: List<String> = emptyList(),
+        voteOptionImageUris: List<Uri?> = emptyList(),
+        goalCount: Int = 0,
+        deadlineDays: Int = 0,
     ) {
         viewModelScope.launch {
             val uploadedUrls = imageBytes.mapNotNull { bytes ->
@@ -284,6 +356,21 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
                 addAll(uploadedUrls)
                 videoUrl?.let { add("video:$it") }
             }
+            // Upload images illustratives par option de vote
+            val pollOptionImages: List<String> = voteOptionImageUris.map { uri ->
+                if (uri != null) {
+                    try {
+                        getApplication<Application>().contentResolver.openInputStream(uri)?.use { stream ->
+                            storageRepository.uploadPostImage(UUID.randomUUID().toString(), stream.readBytes()) ?: ""
+                        } ?: ""
+                    } catch (e: Exception) {
+                        android.util.Log.e("PostViewModel", "Echec upload image option vote", e)
+                        ""
+                    }
+                } else ""
+            }
+
+            val initialCounts = if (pollOptions.isNotEmpty()) List(pollOptions.size) { 0 } else emptyList()
             val newPost = Post(
                 id = UUID.randomUUID().toString(),
                 author = author,
@@ -294,10 +381,40 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
                 loves = 0,
                 imageUrls = allImageUrls,
                 authorImageUri = authorImageUri,
-                videoUrl = videoUrl
+                videoUrl = videoUrl,
+                postType = postType,
+                pollOptions = pollOptions,
+                pollVoteCounts = initialCounts,
+                pollOptionImages = pollOptionImages,
+                goalCount = goalCount,
+                deadlineAt = if (deadlineDays > 0) System.currentTimeMillis() + deadlineDays.toLong() * 86_400_000L else null,
             )
             repository.createPost(newPost)
             refresh()
+            if (deadlineDays > 0) {
+                val deadlineMs = newPost.deadlineAt ?: return@launch
+                scheduleDeadlineNotification(newPost.id, content, postType, deadlineMs)
+            }
+        }
+    }
+
+    private fun scheduleDeadlineNotification(postId: String, content: String, postType: String, deadlineAt: Long) {
+        val app = getApplication<Application>()
+        val delay = deadlineAt - System.currentTimeMillis()
+        if (delay <= 0) return
+        val data = workDataOf("post_id" to postId, "content" to content, "type" to postType)
+        WorkManager.getInstance(app)
+            .enqueue(OneTimeWorkRequestBuilder<DeadlineNotificationWorker>()
+                .setInitialDelay(delay, TimeUnit.MILLISECONDS)
+                .setInputData(data)
+                .build())
+        if (delay > 86_400_000L) {
+            val reminderData = workDataOf("post_id" to postId, "content" to content, "type" to postType, "is_reminder" to true)
+            WorkManager.getInstance(app)
+                .enqueue(OneTimeWorkRequestBuilder<DeadlineNotificationWorker>()
+                    .setInitialDelay(delay - 86_400_000L, TimeUnit.MILLISECONDS)
+                    .setInputData(reminderData)
+                    .build())
         }
     }
 
@@ -314,6 +431,35 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         }
         viewModelScope.launch {
             repository.editPost(postId, newContent)
+        }
+    }
+
+    fun createProductPost(
+        productUrl: String,
+        productTitle: String,
+        productPrice: String = "",
+        productImage: String = "",
+    ) {
+        viewModelScope.launch {
+            try {
+                val post = Post(
+                    id = UUID.randomUUID().toString(),
+                    author = "Ogoula Admin",
+                    handle = "@admin",
+                    content = productTitle,
+                    time = System.currentTimeMillis(),
+                    postType = "classique",
+                    productUrl = productUrl,
+                    productTitle = productTitle,
+                    productPrice = productPrice,
+                    productImage = productImage
+                )
+                repository.createPost(post)
+                // Refresh the posts list
+                refresh()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
@@ -341,6 +487,17 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.updatePostCounts(postId, post.validates, newLoves)
         }
+    }
+
+    fun toggleFavorite(postId: String) {
+        val post = _posts.value.find { it.id == postId } ?: return
+        val isAlreadyFavorited = post.id in favoritedPostIds
+        if (isAlreadyFavorited) favoritedPostIds.remove(postId) else favoritedPostIds.add(postId)
+        val newFavorites = if (isAlreadyFavorited) post.favorites - 1 else post.favorites + 1
+        _posts.value = _posts.value.map {
+            if (it.id == postId) it.copy(favorites = newFavorites, isFavoritedByMe = !isAlreadyFavorited) else it
+        }
+        // TODO: Sauvegarder dans la base de données si nécessaire
     }
 
     private fun commentReactionKey(postId: String, commentId: String) = "$postId|$commentId"
@@ -465,18 +622,103 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun getPopularityScore(userAlias: String): Int {
-        var total = 0
-        _posts.value.forEach { post ->
-            if (handlesEqual(post.handle, userAlias)) {
-                total += (post.validates * 10) + (post.loves * 5) + (post.comments.size * 2)
-            }
-            post.comments.forEach { c ->
-                if (c.authorHandle.isNotBlank() && handlesEqual(c.authorHandle, userAlias)) {
-                    total += (c.validates * 10) + (c.loves * 5)
+    /**
+     * Calcule le score d'influence intelligent (Phase 1 Forte).
+     * Basé sur :
+     * 1. La pertinence des votes (Oracle factor) : a voté pour le gagnant d'un duel/sondage.
+     * 2. La qualité du contenu : validations et partages reçus.
+     * 3. La qualité du débat : validations reçues sur ses commentaires.
+     */
+    fun getInfluenceScore(userAlias: String): Int {
+        var score = 0
+        val allPosts = _posts.value
+        
+        // 1. Pertinence des Votes (The "Sage" Factor)
+        _pollVotes.value.forEach { (postId, votedIndex) ->
+            val post = allPosts.find { it.id == postId }
+            if (post != null && post.pollVoteCounts.isNotEmpty()) {
+                val maxVotes = post.pollVoteCounts.maxOrNull() ?: 0
+                val totalVotes = post.pollVoteCounts.sum()
+                val winnerIndex = post.pollVoteCounts.indexOf(maxVotes)
+                
+                // Si l'utilisateur a voté pour l'option majoritaire dans un scrutin significatif (>10 votes)
+                if (votedIndex == winnerIndex && totalVotes > 10) {
+                    score += 25 
                 }
             }
         }
-        return total
+        
+        allPosts.forEach { post ->
+            // 2. Qualité du Contenu (Auteur)
+            if (handlesEqual(post.handle, userAlias)) {
+                score += (post.validates * 15)  // Validations par les pairs
+                score += (post.shares * 30)     // Viralité / Utilité
+                score += (post.favorites * 10)  // Curation
+                score += (post.comments.size * 2) // Engagement généré
+            }
+            
+            // 3. Qualité du Débat (Commentateur)
+            post.comments.forEach { comment ->
+                if (handlesEqual(comment.authorHandle, userAlias)) {
+                    score += (comment.validates * 10) // Apport de valeur à la discussion
+                    score += (comment.loves * 5)
+                }
+            }
+        }
+        return score
+    }
+
+    /** Détermine si un utilisateur mérite le badge "Expert" (Phase 1 Forte) */
+    fun isExpert(userAlias: String): Boolean {
+        // Seuil d'expertise : par exemple 300 points d'influence
+        return getInfluenceScore(userAlias) >= 300
+    }
+
+    fun getPopularityScore(userAlias: String): Int = getInfluenceScore(userAlias)
+    
+    /**
+     * Met à jour les informations de profil dans un post spécifique
+     * Utilisé pour la synchronisation automatique des profils
+     */
+    fun updatePostProfileInfo(postId: String, newAuthorName: String, newAlias: String, newProfileImage: String?) {
+        viewModelScope.launch {
+            try {
+                // Mettre à jour le post localement
+                val updatedPosts = _posts.value.map { post ->
+                    if (post.id == postId) {
+                        post.copy(
+                            author = newAuthorName,
+                            handle = newAlias,
+                            authorImageUri = newProfileImage
+                        )
+                    } else {
+                        post
+                    }
+                }
+                _posts.value = updatedPosts
+                
+                // Mettre à jour dans la base de données
+                repository.updatePostProfileInfo(postId, newAuthorName, newAlias, newProfileImage)
+                
+                android.util.Log.d("PostViewModel", "Profil mis à jour pour le post $postId")
+            } catch (e: Exception) {
+                android.util.Log.e("PostViewModel", "Erreur mise à jour profil post", e)
+            }
+        }
+    }
+    
+    /**
+     * Rafraîchit tous les posts depuis la base de données
+     * Utilisé pour la synchronisation automatique
+     */
+    fun refreshPosts() {
+        viewModelScope.launch {
+            try {
+                refresh() // Recharger tous les posts
+                android.util.Log.d("PostViewModel", "Posts rafraîchis pour synchronisation")
+            } catch (e: Exception) {
+                android.util.Log.e("PostViewModel", "Erreur rafraîchissement posts", e)
+            }
+        }
     }
 }

@@ -27,9 +27,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
-import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
+import com.example.ogoula.ui.components.releaseExoPlayer
 import com.example.ogoula.ui.theme.GreenGabo
 import java.io.ByteArrayOutputStream
 
@@ -40,7 +40,6 @@ enum class VideoFilter(val label: String) {
     CINEMA("Cinéma")
 }
 
-@androidx.annotation.OptIn(UnstableApi::class)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StudioMontageScreen(onBack: () -> Unit, onPost: (String?, ByteArray?, Uri?) -> Unit) {
@@ -147,7 +146,8 @@ fun StudioMontageScreen(onBack: () -> Unit, onPost: (String?, ByteArray?, Uri?) 
                                 resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
                             }
                         },
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
+                        onRelease = { view -> view.player = null },
                     )
                     
                     // Simulating filters with overlays

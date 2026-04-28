@@ -17,8 +17,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.ogoula.ui.theme.BlueGabo
-import com.example.ogoula.ui.theme.YellowGabo
+import com.example.ogoula.ui.theme.XBlack
+import com.example.ogoula.ui.theme.XBlue
+import com.example.ogoula.ui.theme.XBorderGray
+import com.example.ogoula.ui.theme.XDarkGray
+import com.example.ogoula.ui.theme.XTextGray
+import com.example.ogoula.ui.theme.XWhite
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,7 +56,9 @@ fun PostScreen(
             title = "Post Classique",
             subtitle = "Textes, images ou memes",
             icon = Icons.Default.Add,
-            color = MaterialTheme.colorScheme.surface,
+            color = XDarkGray,
+            textColor = XWhite,
+            borderColor = XBorderGray,
             onClick = onCreatePostClick,
         )
 
@@ -62,7 +68,9 @@ fun PostScreen(
             title = "Créer ma Communauté",
             subtitle = "Lancez votre groupe d'intérêt",
             icon = Icons.Default.Group,
-            color = MaterialTheme.colorScheme.surfaceVariant,
+            color = XDarkGray,
+            textColor = XWhite,
+            borderColor = XBlue, // On garde le bleu ici pour indiquer que c'est l'option sélectionnée/recommandée
             onClick = onCreateCommunityClick,
         )
 
@@ -72,7 +80,9 @@ fun PostScreen(
             title = "Créer une Scène",
             subtitle = "Direct ou Studio Montage",
             icon = Icons.Default.VideoCall,
-            color = BlueGabo,
+            color = XDarkGray,
+            textColor = XWhite,
+            borderColor = XBorderGray,
             onClick = { showSceneSheet = true },
         )
     }
@@ -108,13 +118,7 @@ fun PostScreen(
                 ListItem(
                     headlineContent = { Text("Studio Montage") },
                     supportingContent = { Text("Éditer une vidéo avec des filtres fun") },
-                    leadingContent = {
-                        Icon(
-                            Icons.Default.Movie,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurface,
-                        )
-                    },
+                    leadingContent = { Icon(Icons.Default.Movie, contentDescription = null, tint = Color.Blue) },
                     modifier = Modifier.clickable {
                         showSceneSheet = false
                         onStudioClick()
@@ -132,23 +136,25 @@ fun PostOption(
     icon: ImageVector,
     color: Color,
     textColor: Color = Color.White,
+    borderColor: Color = Color.Transparent,
     onClick: () -> Unit
 ) {
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = color)
+        colors = CardDefaults.cardColors(containerColor = color),
+        border = androidx.compose.foundation.BorderStroke(1.dp, borderColor)
     ) {
         Row(
-            modifier = Modifier.padding(24.dp),
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = textColor,
-                modifier = Modifier.size(32.dp)
+                tint = if (borderColor != XBorderGray && borderColor != Color.Transparent) borderColor else textColor,
+                modifier = Modifier.size(28.dp)
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column {
@@ -161,7 +167,7 @@ fun PostOption(
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = textColor.copy(alpha = 0.8f)
+                    color = textColor.copy(alpha = 0.78f)
                 )
             }
         }

@@ -1,7 +1,6 @@
 package com.example.ogoula.ui.screens
 
 import android.net.Uri
-import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,12 +15,10 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
-import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.delay
 
-@OptIn(UnstableApi::class)
 @Composable
 fun SplashScreen(onVideoFinished: () -> Unit) {
     val context = LocalContext.current

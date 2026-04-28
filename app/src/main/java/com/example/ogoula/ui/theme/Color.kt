@@ -2,19 +2,39 @@ package com.example.ogoula.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-/** Vert principal Ogoula (#1C745E) — base de l’identité mobile. */
+/** X (Twitter) style colors */
+
+/** Fond principal noir (X dark theme) */
+val XBlack = Color(0xFF000000)
+
+/** Fond gris foncé pour les cartes/surfaces */
+val XDarkGray = Color(0xFF16181C)
+
+/** Gris moyen pour les bordures et séparateurs */
+val XBorderGray = Color(0xFF2F3336)
+
+/** Gris clair pour le texte secondaire */
+val XTextGray = Color(0xFF71767B)
+
+/** Bleu X pour les accents et liens */
+val XBlue = Color(0xFF1D9BF0)
+
+/** Blanc pour le texte principal */
+val XWhite = Color(0xFFFFFFFF)
+
+/** Vert Ogoula (conservé pour certains éléments de branding) */
 val GreenGabo = Color(0xFF1C745E)
 
-/** Jaune drapeau / accent (cartes, boutons secondaires). */
+/** Jaune Ogoula (conservé pour certains éléments) */
 val YellowGabo = Color(0xFFF5D547)
 
-/** Bleu drapeau / accent (icônes vérifiées, carte « Scène », liens). */
+/** Bleu Ogoula (conservé pour certains éléments) */
 val BlueGabo = Color(0xFF2E7CBD)
 
-/** Blanc pur (surfaces, texte sur vert). */
+/** Blanc pur (surfaces, texte sur vert) */
 val OgoulaWhite = Color.White
 
-/** Fond très léger tiré sur le blanc cassé / menthe pâle. */
+/** Fond très léger tiré sur le blanc cassé / menthe pâle */
 val OgoulaSurfaceTint = Color(0xFFF4F9F7)
 
 val Purple80 = Color(0xFFD0BCFF)

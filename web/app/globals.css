@@ -5,9 +5,25 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 :root {
-  --ogoula-green: #009A44;
-  --ogoula-green-dark: #006b32;
-  --ogoula-green-soft: #ecfdf5;
+  /* Palette Ogoula - Noir, Blanc, Arc-en-ciel */
+  --ogoula-black: #000000;
+  --ogoula-white: #FFFFFF;
+  --ogoula-red: #FF3B3B;
+  --ogoula-orange: #FF8C42;
+  --ogoula-yellow: #FFD93D;
+  --ogoula-green: #3BFF8C;
+  --ogoula-blue: #3BA7FF;
+  --ogoula-purple: #A259FF;
+  
+  /* Gradient arc-en-ciel */
+  --gradient-rainbow: linear-gradient(90deg, 
+    #FF3B3B 0%, 
+    #FF8C42 16.66%, 
+    #FFD93D 33.33%, 
+    #3BFF8C 50%, 
+    #3BA7FF 66.66%, 
+    #A259FF 83.33%, 
+    #FF3B3B 100%);
 }
 
 * { box-sizing: border-box; }
@@ -16,6 +32,11 @@ html { scroll-behavior: smooth; }
 
 body {
   font-family: 'Inter', sans-serif;
-  background: #fff;
-  color: #111;
+  background: #000000;
+  color: #FFFFFF;
+}
+
+/* Style pour bg-gradient-rainbow */
+.bg-gradient-rainbow {
+  background-image: var(--gradient-rainbow);
 }

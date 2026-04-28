@@ -19,15 +19,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
+ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.ogoula.data.AuthRepository
 import com.example.ogoula.ui.AuthViewModel
 import com.example.ogoula.ui.UserViewModel
-import com.example.ogoula.ui.theme.GreenGabo
-import com.example.ogoula.ui.theme.OgoulaSurfaceTint
-import com.example.ogoula.ui.theme.OgoulaWhite
+import com.example.ogoula.ui.theme.XBlack
+import com.example.ogoula.ui.theme.XBlue
+import com.example.ogoula.ui.theme.XBorderGray
+import com.example.ogoula.ui.theme.XDarkGray
+import com.example.ogoula.ui.theme.XTextGray
+import com.example.ogoula.ui.theme.XWhite
 
 @Composable
 fun LoginScreen(
@@ -47,19 +50,19 @@ fun LoginScreen(
     }
 
     val loginFieldColors = OutlinedTextFieldDefaults.colors(
-        focusedTextColor = GreenGabo,
-        unfocusedTextColor = GreenGabo,
-        cursorColor = GreenGabo,
-        focusedBorderColor = OgoulaWhite,
-        unfocusedBorderColor = OgoulaWhite.copy(alpha = 0.55f),
-        focusedLabelColor = OgoulaWhite.copy(alpha = 0.92f),
-        unfocusedLabelColor = OgoulaWhite.copy(alpha = 0.72f),
-        focusedLeadingIconColor = GreenGabo,
-        unfocusedLeadingIconColor = GreenGabo,
-        focusedTrailingIconColor = GreenGabo,
-        unfocusedTrailingIconColor = GreenGabo,
-        focusedContainerColor = OgoulaWhite,
-        unfocusedContainerColor = OgoulaSurfaceTint,
+        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+        cursorColor = XBlue,
+        focusedBorderColor = XBlue,
+        unfocusedBorderColor = XBorderGray.copy(alpha = 0.85f),
+        focusedLabelColor = XBlue,
+        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        focusedLeadingIconColor = XBlue,
+        unfocusedLeadingIconColor = XTextGray,
+        focusedTrailingIconColor = XBlue,
+        unfocusedTrailingIconColor = XTextGray,
+        focusedContainerColor = XDarkGray,
+        unfocusedContainerColor = XDarkGray,
     )
 
     Column(
@@ -74,7 +77,7 @@ fun LoginScreen(
                 .fillMaxHeight(0.35f)
                 .background(
                     brush = Brush.verticalGradient(
-                        colors = listOf(GreenGabo, GreenGabo.copy(alpha = 0.7f), Color.Transparent)
+                        colors = listOf(XBlack, XBlue.copy(alpha = 0.78f), Color.Transparent)
                     )
                 ),
             contentAlignment = Alignment.Center
@@ -83,13 +86,13 @@ fun LoginScreen(
                 Text(
                     "Ogoula",
                     style = MaterialTheme.typography.displayMedium,
-                    color = OgoulaWhite,
+                    color = XWhite,
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    "Parlons des choses de notre bled",
+                    "Plateforme de valorisation et d'influence",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = OgoulaWhite.copy(alpha = 0.9f),
+                    color = XWhite.copy(alpha = 0.9f),
                 )
             }
         }
@@ -111,7 +114,7 @@ fun LoginScreen(
 
                 if (isRegister) {
                     Text(
-                        text = "Après la création du compte, tu déclareras ton intention, ta contribution, et tu accepteras le cadre pro-contribution Ogoula : pertinence des apports, respect de la charte (aucune injure, violence ou irrespect), contributions positives, fun et sociabilité — condition pour réussir les phases de test.",
+                        text = "Ogoula est une plateforme de valorisation et d'influence où les marques, les produits et les personnalités gagnent en visibilité grâce aux interactions, aux votes et aux retours de la communauté.\n\nEn rejoignant Ogoula, tu acceptes de contribuer positivement à cette valorisation collective en respectant la charte : pertinence des apports, respect d'autrui (aucune injure, violence ou irrespect), interactions constructives et fun — conditions essentielles pour le succès de notre communauté.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
@@ -224,7 +227,7 @@ fun LoginScreen(
                     colors = ButtonDefaults.buttonColors(),
                 ) {
                     if (isLoading) {
-                        CircularProgressIndicator(color = GreenGabo, modifier = Modifier.size(24.dp))
+                        CircularProgressIndicator(color = XWhite, modifier = Modifier.size(24.dp))
                     } else {
                         Text(if (isRegister) "Créer mon compte" else "Se connecter")
                     }
@@ -237,7 +240,7 @@ fun LoginScreen(
                     Text(
                         if (isRegister) "Déjà un compte ? Se connecter"
                         else "Pas encore de compte ? S'inscrire",
-                        color = OgoulaWhite.copy(alpha = 0.92f),
+                        color = MaterialTheme.colorScheme.primary,
                     )
                 }
             }
@@ -245,10 +248,10 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.weight(1f))
 
-        // Bandeau discret (vert + blanc, sans tricolore)
+        // Bandeau discret style X
         Row(modifier = Modifier.fillMaxWidth().height(4.dp)) {
-            Box(modifier = Modifier.weight(1f).fillMaxHeight().background(GreenGabo))
-            Box(modifier = Modifier.weight(1f).fillMaxHeight().background(Color.White))
+            Box(modifier = Modifier.weight(1f).fillMaxHeight().background(XBlue))
+            Box(modifier = Modifier.weight(1f).fillMaxHeight().background(XBorderGray))
         }
     }
 }
