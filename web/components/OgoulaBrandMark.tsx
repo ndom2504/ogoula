@@ -23,7 +23,6 @@ export function OgoulaBrandMark({
         strokeLinecap="round"
         strokeLinejoin="round"
         aria-hidden
-        title="Ogoula"
       >
         <defs>
           <linearGradient id="rainbowGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -55,7 +54,6 @@ export function OgoulaBrandMark({
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      title="Ogoula"
     >
       <defs>
         <linearGradient id="rainbowGradientColor" x1="0%" y1="0%" x2="100%" y2="100%">
